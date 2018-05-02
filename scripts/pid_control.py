@@ -36,8 +36,8 @@ ikmodel.load()
 ######
 # relevant tuneable parameters
 ######
-debug = args.debug
-Kp = 0
+debug = False
+Kp = 10
 Kd = 0
 
 
@@ -59,7 +59,7 @@ def get_target_joints(loc = None):
     print("Joint angles desired are %s" % sol)
   return sol
 
-def get_pid_torques(target_joints, M):
+def get_pid_torques(target_joints):
   curState = robot.GetDOFValues()
   curStateDot = robot.GetDOFVelocities()
   # note the need to add two extra dimensions (because of finger dofs?)
@@ -68,35 +68,12 @@ def get_pid_torques(target_joints, M):
   if debug:
     print("Current error is %s" % error)
     print("Current errorDot is %s" % errorDot)
-  mintorque = -1
-  maxtorque = 1
-  return np.array([max(mintorque, min(maxtorque, t)) for t in M.dot(- Kp * error - Kd * errorDot)])
-
-def get_M_matrix():
-  M = [] 
-  for i in range(robot.GetDOF()): 
-    testaccel = np.zeros(robot.GetDOF()) 
-    testaccel[i] = 1.0 
-    M.append(robot.ComputeInverseDynamics(dofaccelerations=testaccel, externalforcetorque=None, returncomponents=True)[0]) 
-  M = np.array(M)
-  if (debug):
-    print("Mass matrix is %s" % M)
-  return(M)
-
-def get_G_torques():
-  (M, C, G) = robot.ComputeInverseDynamics(dofaccelerations=None, externalforcetorque=None, returncomponents=True) 
-  if debug:
-    print("G is ", G)
-  return(G)
-
+  return - Kp * error - Kd * errorDot
 with env:
     # not sure why we need to load this here instead of load this as an
-    # arg to this script (before loading the robot into the scene), but if
-    # you were to load this as an arg to this script, the robot wouldn't stay
-    # fixed to the grid and would float to the ground
+    # arg to this function (before loading the robot into the scene), but at least it works!
     env.Load("./config/tutorial.env.xml")
-    # you could use the below commented out code to set gravity, but I
-    # don't see an easy way to set the ERP parameter
+    # (or, you could do it programatically set a physics engine
     #physics = RaveCreatePhysicsEngine(env,'ode')
     #env.SetPhysicsEngine(physics)
     #physics.SetGravity(numpy.array((0,0,-9.8)))
@@ -107,24 +84,16 @@ with env:
     env.StopSimulation()
     env.StartSimulation(timestep=0.001)
 
-pid_rate = rospy.Rate(300) # update controller 100Hz
-inertia_rate_ratio = 1 # update inertia matrix after every 100 updates of pid_rate
+pid_rate = rospy.Rate(100) # update controller 100Hz
 target_joints = get_target_joints()
-M  = get_M_matrix() 
-G = get_G_torques() * 4
-iterCount = 0
 while not rospy.is_shutdown(): 
-  if iterCount % inertia_rate_ratio == 0:
-    M = get_M_matrix() 
-    G = get_G_torques() * 3.5
-  torques = get_pid_torques(target_joints, M) + G
+  torques = get_pid_torques(target_joints)
   # have to lock environment when calling robot methods
   with env:
-    if debug and False:
+    if debug:
       print("torques are %s" % torques)
     robot.SetDOFTorques(torques,True)
   pid_rate.sleep()
-  iterCount += 1
 
 # reset the physics engine
 env.SetPhysicsEngine(None)
