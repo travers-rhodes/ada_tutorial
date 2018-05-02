@@ -36,7 +36,7 @@ ikmodel.load()
 ######
 # relevant tuneable parameters
 ######
-debug = True
+debug = False
 Kp = 10
 Kd = 0
 
@@ -70,10 +70,14 @@ def get_pid_torques(target_joints):
     print("Current errorDot is %s" % errorDot)
   return - Kp * error - Kd * errorDot
 with env:
-    # set a physics engine
-    physics = RaveCreatePhysicsEngine(env,'ode')
-    env.SetPhysicsEngine(physics)
-    physics.SetGravity(numpy.array((0,0,-9.8)))
+    # not sure why we need to load this here instead of load this as an
+    # arg to this function (before loading the robot into the scene), but at least it works!
+    env.Load("./config/tutorial.env.xml")
+    # (or, you could do it programatically set a physics engine
+    #physics = RaveCreatePhysicsEngine(env,'ode')
+    #env.SetPhysicsEngine(physics)
+    #physics.SetGravity(numpy.array((0,0,-9.8)))
+    
     
     robot = env.GetRobots()[0]
     robot.GetLinks()[0].SetStatic(True)
