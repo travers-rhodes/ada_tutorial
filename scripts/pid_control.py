@@ -36,9 +36,9 @@ ikmodel.load()
 ######
 # relevant tuneable parameters
 ######
-debug = False
-Kp = 10
-Kd = 0
+debug = args.debug
+Kp = 1
+Kd = 0.9
 
 
 def get_target_joints(loc = None):
@@ -59,16 +59,27 @@ def get_target_joints(loc = None):
     print("Joint angles desired are %s" % sol)
   return sol
 
-def get_pid_torques(target_joints):
+def get_pid_torques(target_joints, previous_error, previous_time):
+  curTime = rospy.Time.now() 
   curState = robot.GetDOFValues()
   curStateDot = robot.GetDOFVelocities()
   # note the need to add two extra dimensions (because of finger dofs?)
   error = curState - np.concatenate((target_joints , [0.0,0.0]))
-  errorDot = curStateDot
+  dur = (curTime - previous_time).to_sec()
+  if debug:
+    print("times are", curTime, previous_time, dur)
+  if dur > 0 and previous_error is not None:
+    errorDot = (error - previous_error)/dur
+  else:
+    errorDot = np.zeros(error.shape)
   if debug:
     print("Current error is %s" % error)
     print("Current errorDot is %s" % errorDot)
-  return - Kp * error - Kd * errorDot
+  mintorque = -100
+  maxtorque = 100
+  return (np.array([min(maxtorque, max(mintorque, t)) for t in - Kp * error - Kd * errorDot]),
+      error,
+      curTime)
 with env:
     # not sure why we need to load this here instead of load this as an
     # arg to this function (before loading the robot into the scene), but at least it works!
@@ -86,13 +97,15 @@ with env:
 
 pid_rate = rospy.Rate(100) # update controller 100Hz
 target_joints = get_target_joints()
+previous_error = None
+previous_time = rospy.Time.now()
 while not rospy.is_shutdown(): 
-  torques = get_pid_torques(target_joints)
+  (torques, previous_error, previous_time) = get_pid_torques(target_joints, previous_error, previous_time)
   # have to lock environment when calling robot methods
   with env:
     if debug:
       print("torques are %s" % torques)
-    robot.SetDOFTorques(torques,True)
+    robot.SetDOFTorques(torques,add=False)
   pid_rate.sleep()
 
 # reset the physics engine
