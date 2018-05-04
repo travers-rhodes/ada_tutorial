@@ -41,18 +41,37 @@ print("loaded ik model")
 ######
 debug = args.debug
 
-rot = t3d.quaternions.quat2mat([0,np.sqrt(2), 0, np.sqrt(2)])
+roty = t3d.quaternions.quat2mat([0,np.sqrt(2), 0, np.sqrt(2)])
+rotx = t3d.quaternions.quat2mat([np.sqrt(2),0, 0, np.sqrt(2)])
+rot = roty.dot(rotx)
 print("rot is %s" % rot)
 
-for end in [[[1,0,0],[0,1,0],[0,0,1]],
-              [[0,1,0],[-1,0,0],[0,0,1]],
-              [[1,0,0],[0,0,-1],[0,1,0]],
-              rot]:
+poses =[ 
+                [[ 0.21676946, -0.2959789,   0.552686472]],
+                [[ 0.21676946, -0.2959789,   0.52686472]],
+                [[ 0.21676946, -0.2959789,   0.42686472]],
+                [[ 0.31676946, -0.1959789,   0.42686472]],
+                [[ 0.31676946, -0.3959789,   0.42686472]]]
+
+for i,endLoc in enumerate(poses+poses+poses):
   with env:
     manipprob = interfaces.BaseManipulation(robot) # create the interface for basic manipulation programs
-    endLoc = np.array([[ 0.21676946, -0.2959789,   0.52686472]])
-    Tgoal = np.concatenate((np.concatenate((end, np.transpose(endLoc)), axis=1),[[0,0,0,1]]), axis=0)
-    res = manipprob.MoveToHandPosition(matrices = [Tgoal],seedik=10) # call motion planner with goal joint angles
+    Tgoal = np.concatenate((np.concatenate((rot, np.transpose(endLoc)), axis=1),[[0,0,0,1]]), axis=0)
+    constrainttaskmatrix=np.eye(4)
+    constraintmatrix = np.linalg.inv(manip.GetTransform())
+    constrainterrorthresh = 0.005 # copied from tutorial
+    constraintfreedoms = [0,0,0,0,0,0] # based on parsing the tutorial. Not sure why it's not 0,0,1,...
+    if i > 0:
+     # don't let any x,y rotations happen
+     constraintfreedoms = [1,1,0,0,0,0] 
+    print("planning move")
+    manipprob.MoveToHandPosition(matrices=[Tgoal],maxiter=3000,maxtries=1,seedik=40,
+      constraintfreedoms=constraintfreedoms,
+      constraintmatrix=constraintmatrix, 
+      constrainttaskmatrix=constrainttaskmatrix,
+      constrainterrorthresh=constrainterrorthresh,
+      steplength=0.002)
+  print("moving")
   robot.WaitForController(0) # wait
   print("moved to", Tgoal)
 print("moving done")
