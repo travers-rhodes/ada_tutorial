@@ -7,6 +7,7 @@ from openravepy import *
 import numpy as np
 import time
 import adapy
+import transforms3d as t3d
 
 rospy.init_node('adapy', anonymous=True)
 parser = argparse.ArgumentParser(description='utility script for loading AdaPy')
@@ -29,21 +30,32 @@ env, robot = adapy.initialize(
     env_path=args.env_xml
 )
 
-manip = robot.GetActiveManipulator()
-ikmodel = databases.inversekinematics.InverseKinematicsModel(robot,iktype=IkParameterization.Type.Translation3D)
-ikmodel.load()
-
+manip = robot.SetActiveManipulator("Mico")
+print(manip)
+ikmodel = databases.inversekinematics.InverseKinematicsModel(robot,iktype=IkParameterization.Type.Transform6D)
+if not ikmodel.load():
+  ikmodel.autogenerate()
+print("loaded ik model")
 ######
 # relevant tuneable parameters
 ######
 debug = args.debug
 
-manipprob = interfaces.BaseManipulation(robot) # create the interface for basic manipulation programs
-endLoc = np.array([ 0.21676946, -0.2959789,   0.72686472])
-Tgoal = np.array([[1,0,0,endLoc[0]],[0,1,0,endLoc[1]],[0,0,1,endLoc[2]],[0,0,0,1]])
-res = manipprob.MoveToHandPosition(translation = endLoc,seedik=10) # call motion planner with goal joint angles
-robot.WaitForController(0) # wait
+rot = t3d.quaternions.quat2mat([0,np.sqrt(2), 0, np.sqrt(2)])
+print("rot is %s" % rot)
 
+for end in [[[1,0,0],[0,1,0],[0,0,1]],
+              [[0,1,0],[-1,0,0],[0,0,1]],
+              [[1,0,0],[0,0,-1],[0,1,0]],
+              rot]:
+  with env:
+    manipprob = interfaces.BaseManipulation(robot) # create the interface for basic manipulation programs
+    endLoc = np.array([[ 0.21676946, -0.2959789,   0.52686472]])
+    Tgoal = np.concatenate((np.concatenate((end, np.transpose(endLoc)), axis=1),[[0,0,0,1]]), axis=0)
+    res = manipprob.MoveToHandPosition(matrices = [Tgoal],seedik=10) # call motion planner with goal joint angles
+  robot.WaitForController(0) # wait
+  print("moved to", Tgoal)
+print("moving done")
 rospy.spin()
 
 
