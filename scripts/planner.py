@@ -86,15 +86,37 @@ class Tracker:
       return
     self.move_to_target(endLoc, timeoutSecs, allowRotation=False)
 
+  # return a boolean for whether the end-effector is already at the endLoc target
+  # if the end-effector is already close enough to the target, then there's no need
+  # to move the end-effector to the target
+  def is_close_enough_to_target(self, endLoc):
+    return self.distance_to_target(endLoc) < 0.001
+
+  def distance_to_target(self, endLoc):
+    curLoc = self.get_cur_loc()
+    diff = endLoc - curLoc
+    dist = np.sqrt(sum(diff**2))
+    print(dist)
+    return dist
+
+  def get_cur_loc(self):
+    Tee = self.manip.GetEndEffectorTransform()
+    curLoc = Tee[0:3,3]
+    return(curLoc)
+
   # for at most timeoutSecs, compute and move toward the input endLoc
   # endLoc must be a length 3 np.array
   # if allowRotation is set to True, allow the robot end effector to rotate along the x,y axes. 
   # Otherwise, only allow rotation around the z-axis
   def move_to_target(self, endLoc, timeoutSecs, allowRotation=False):
+    if self.is_close_enough_to_target(endLoc):
+      rospy.sleep(timeoutSecs)
+      return 
     with self.env:
-      print(endLoc)
-      print(endLoc.shape)
+      print("cur loc", self.get_cur_loc())
+      print("moving to", endLoc)
       Tgoal = np.concatenate((np.concatenate((self.rot, np.transpose([endLoc])), axis=1),[[0,0,0,1]]), axis=0)
+      print("moving to", Tgoal)
       constrainttaskmatrix=np.eye(4)
       constraintmatrix = np.linalg.inv(self.manip.GetTransform())
       constrainterrorthresh = 0.005 # copied from tutorial
@@ -102,12 +124,12 @@ class Tracker:
       if not allowRotation:
        # don't let any x,y rotations happen
        constraintfreedoms = [1,1,0,0,0,0] 
-      self.manip_rob.MoveToHandPosition(matrices=[Tgoal],maxiter=3000,maxtries=1,seedik=40,
+      self.manip_rob.MoveToHandPosition(matrices=[Tgoal],maxiter=3000,maxtries=10,seedik=40,
         constraintfreedoms=constraintfreedoms,
         constraintmatrix=constraintmatrix, 
         constrainttaskmatrix=constrainttaskmatrix,
         constrainterrorthresh=constrainterrorthresh,
-        steplength=0.002)
+        steplength=0.001)
     self.robot.WaitForController(timeoutSecs) # wait the timeout amount before choosing a new target
 
 if __name__=="__main__":
@@ -135,6 +157,7 @@ if __name__=="__main__":
                 [ 0.21676946, -0.2959789,   0.52686472],
                 [ 0.21676946, -0.2959789,   0.42686472],
                 [ 0.31676946, -0.1959789,   0.42686472],
+                [ 0.322638  , -0.35740914,  0.43557774],
                 [ 0.31676946, -0.3959789,   0.42686472]]
   pub = rospy.Publisher('feedbot/mouth_pose', tfMessage, queue_size=10)
   h = Header()
