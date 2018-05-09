@@ -12,12 +12,13 @@ from ada_cartesian_control import AdaCartesianControl
 from std_msgs.msg import Header
 from geometry_msgs.msg import Point
 
-point_topic = "/DO/inferencePointOut"
+point_topic = "/DO/inferenceOut/Point"
 x_dist = 0.41676946
 
 class CameraCalibration:
   def __init__(self):
-    self.camera_to_robot =  np.array([[0,0,1,-0.8],[-1,0,0,-0.4],[0,-1,0,0.55],[0,0,0,1]])
+    camera_to_camera = np.array([[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]])
+    self.camera_to_robot =  np.array([[0,0,1,-0.8],[-1,0,0,-0.4],[0,-1,0,0.55],[0,0,0,1]]).dot(camera_to_camera)
     self.camera_to_robot = np.eye(4)
 
   # point should be a length 4 np.array giving the location of the target point in the camera frame
@@ -97,7 +98,7 @@ if __name__=="__main__":
   thread = Thread(target=t.follow_mouth, args = (1,))
   thread.start()
 
-  #rospy.spin()
+  rospy.spin()
 
   pub = rospy.Publisher(point_topic, Point, queue_size=10)
   h = Header()
