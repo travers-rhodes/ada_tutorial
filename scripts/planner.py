@@ -50,13 +50,20 @@ class Tracker:
         attach_viewer=args.viewer,
         env_path=args.env_xml
     )
+
+    # make the robot go at half speed
+    vel_limits = self.robot.GetDOFVelocityLimits()
+    self.robot.SetDOFVelocityLimits(vel_limits * 0.5)
     
     self.manip = self.robot.SetActiveManipulator("Mico")
     self.manip_rob = interfaces.BaseManipulation(self.robot) # create the interface for basic manipulation programs
 
     # even though it's not obvious how we use this, we need to initialize the IKModel on self.robot
     ikmodel = databases.inversekinematics.InverseKinematicsModel(self.robot,iktype=IkParameterization.Type.Transform6D)
-    if not ikmodel.load():
+    try:
+      # ideally this would return 0 instead of erroring if it fails, but for now a try-catch will do the trick
+      ikmodel.load()
+    except:
       ikmodel.autogenerate()
     
     self.rot = self.generate_target_rotmat()
@@ -140,18 +147,20 @@ class Tracker:
       if constrainMotion:
         # don't let any x,y,z rotations happen
         # don't let the robot move in the x,y directions in the task frame (only let it move in the z direction)
-        constraintfreedoms = [1,1,1,1,1,0]
+        constraintfreedoms = [1,1,1,1,0,0]
         motion_frame = th.get_motion_frame_matrix(self.manip.GetTransform(), endLoc)
         constrainttaskmatrix = np.eye(4) 
         constraintmatrix = np.linalg.inv(motion_frame)
       
-      self.manip_rob.MoveToHandPosition(matrices=[Tgoal],maxiter=3000,maxtries=10,seedik=40,
+      traj = self.manip_rob.MoveToHandPosition(matrices=[Tgoal],maxiter=3000,maxtries=10,seedik=40,
         constraintfreedoms=constraintfreedoms,
         constraintmatrix=constraintmatrix, 
         constrainttaskmatrix=constrainttaskmatrix,
         constrainterrorthresh=constrainterrorthresh,
+        outputtrajobj=True,
+        execute=False,
         steplength=0.002) # tutorial had 0.002
-    self.robot.WaitForController(timeoutSecs) # wait the timeout amount before choosing a new target
+    self.robot.ExecuteTrajectory(traj)
 
 if __name__=="__main__":
   # parse input arguments
@@ -171,7 +180,7 @@ if __name__=="__main__":
   # start tracker running and start following locations
   t = Tracker(args)
   from threading import Thread
-  thread = Thread(target=t.follow_mouth, args = (0.1,))
+  thread = Thread(target=t.follow_mouth, args = (1,))
   thread.start()
 
   #rospy.spin()
@@ -188,7 +197,7 @@ if __name__=="__main__":
     #mesg = tfMessage([TransformStamped(h, "dummy_frame", Transform(Vector3(pose[0], pose[1], pose[2]), None))])
     mesg = Point(pose[0], pose[1], pose[2])
     pub.publish(mesg)
-    rospy.sleep(1)
+    rospy.sleep(2)
   thread.join()
 
 
