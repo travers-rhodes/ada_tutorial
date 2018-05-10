@@ -2,13 +2,11 @@
 """Shows how to set a physics engine and send torque commands to the robot
 """
 import rospy
-import argparse
 import numpy as np
 import time
 import adapy
 
-from ada_cartesian_control import AdaCartesianControl
-
+from ada_tutorial.srv import MoveArm
 from std_msgs.msg import Header
 from geometry_msgs.msg import Point
 
@@ -39,13 +37,13 @@ class PositionCache:
     self.latest_mouth_position = mesg
 
 class Tracker:
-  def __init__(self, args):
-    self.cart_con = AdaCartesianControl(args)
+  def __init__(self):
     self.pos_cache = PositionCache()
     self.cameraCalib = CameraCalibration()
 
     # move to init position 
-    self.cart_con.move_to_target(np.array([x_dist, -0.2959789,   0.552686472]), timeoutSecs=0, constrainMotion=False)
+    self.move_to_target = rospy.ServiceProxy('move_arm', MoveArm)
+    self.move_to_target(target=Point(x_dist, -0.2959789,   0.552686472), constrainMotion=False)
 
   def follow_mouth(self,timeoutSecs):
     # start tracking the actual mouth
@@ -75,30 +73,19 @@ class Tracker:
       else:
         rospy.sleep(timeoutSecs)
       return
-    self.cart_con.move_to_target(endLoc, timeoutSecs, constrainMotion=True)
+    #TODO add back in timeoutSecs if you want
+    self.move_to_target(target=Point(endLoc[0], endLoc[1], endLoc[2]), constrainMotion=True)
 
 if __name__=="__main__":
-  # parse input arguments
-  parser = argparse.ArgumentParser(description='node to track the position given by a rostopic')
-  parser.add_argument('-s', '--sim', action='store_true',
-                          help='simulation mode')
-  parser.add_argument('-v', '--viewer', nargs='?', const=True,
-                          help='attach a viewer of the specified type')
-  parser.add_argument('--env-xml', type=str,
-                          help='environment XML file; defaults to an empty environment')
-  parser.add_argument('--debug', action='store_true',
-                          help='enable debug logging')
-  args = parser.parse_args()
- 
   # initialize the ros node 
   rospy.init_node('adapy_tracker', anonymous=True)
   # start tracker running and start following locations
-  t = Tracker(args)
+  t = Tracker()
   from threading import Thread
   thread = Thread(target=t.follow_mouth, args = (1,))
   thread.start()
 
-  rospy.spin()
+  #rospy.spin()
 
   pub = rospy.Publisher(point_topic, Point, queue_size=10)
   h = Header()

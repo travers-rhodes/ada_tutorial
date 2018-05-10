@@ -1,3 +1,4 @@
 geometry_msgs/Point target
+bool constrainMotion
 ---
 bool success

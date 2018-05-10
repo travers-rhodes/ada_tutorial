@@ -1,14 +1,16 @@
 #!/usr/bin/env python
+import rospy
+import argparse
+import numpy as np
 
 from ada_tutorial.srv import MoveArm, MoveArmResponse
 from ada_cartesian_control import AdaCartesianControl
-import rospy
 
 def main(args):
   # initialize the ros node 
   rospy.init_node('move_arm_server', anonymous=True)
   mas = move_arm_service(args)
-  s = rospy.Service('move_arm', MoveArm, handle_move_arm)
+  s = rospy.Service('move_arm', MoveArm, mas.handle_move_arm)
   rospy.spin() 
 
 class move_arm_service:
@@ -17,11 +19,11 @@ class move_arm_service:
 
   # takes in a MoveArm request and calls ada_control 
   # to move the arm based on that request
-  def handle_move_arm(req):
+  def handle_move_arm(self, req):
     # move_to_target's endLoc should be a length 3 np.array
     # of the coordinates to move the end-effector of the arm to in
     # cartesian coordinates relative to the base frame of the arm
-    self.ada_control.move_to_target(endLoc=np.array([req.target.x, req.target.y, req.target.z]))
+    self.ada_control.move_to_target(endLoc=np.array([req.target.x, req.target.y, req.target.z]), constrainMotion=req.constrainMotion)
     return MoveArmResponse(True)
 
 
@@ -37,6 +39,7 @@ if __name__=="__main__":
   parser.add_argument('--debug', action='store_true',
                           help='enable debug logging')
   args = parser.parse_args()
+  main(args) 
  
   
    
