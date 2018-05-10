@@ -9,11 +9,11 @@ from ada_cartesian_control import AdaCartesianControl
 def main(args):
   # initialize the ros node 
   rospy.init_node('move_arm_server', anonymous=True)
-  mas = move_arm_service(args)
+  mas = MoveArmService(args)
   s = rospy.Service('move_arm', MoveArm, mas.handle_move_arm)
   rospy.spin() 
 
-class move_arm_service:
+class MoveArmService:
   def __init__(self, args):
     self.ada_control = AdaCartesianControl(args)
 
@@ -38,7 +38,7 @@ if __name__=="__main__":
                           help='environment XML file; defaults to an empty environment')
   parser.add_argument('--debug', action='store_true',
                           help='enable debug logging')
-  args = parser.parse_args()
+  args = parser.parse_args(rospy.myargv()[1:])
   main(args) 
  
   

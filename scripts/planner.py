@@ -42,6 +42,7 @@ class Tracker:
     self.cameraCalib = CameraCalibration()
 
     # move to init position 
+    rospy.wait_for_service('move_arm', timeout=None)
     self.move_to_target = rospy.ServiceProxy('move_arm', MoveArm)
     self.move_to_target(target=Point(x_dist, -0.2959789,   0.552686472), constrainMotion=False)
 
