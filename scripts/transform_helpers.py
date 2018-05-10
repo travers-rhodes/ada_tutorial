@@ -1,4 +1,5 @@
 import numpy as np
+import transforms3d as t3d
 
 # given two 3d points curLoc and endLoc
 # return the transformation associated with the frame
@@ -42,9 +43,21 @@ def perpendicular_vector(v):
   return np.array([-v[1], v[0], 0])
 
 def distance(curLoc, endLoc):
-    diff = endLoc - curLoc
-    dist = np.sqrt(sum(diff**2))
-    return dist
+  diff = endLoc - curLoc
+  dist = np.sqrt(sum(diff**2))
+  return dist
+
+# note that we're following the transform3d convention that the state representation
+# is [x, y, z, qw, qx, qy, qz]
+def get_transform_difference(curTransform, targetLoc, targetQuat):
+  curLoc = curTransform[0:3,3]
+  transDiff = targetLoc - curLoc
+  curQuat = t3d.quaternions.mat2quat(curTransform[0:3,:][:,0:3])
+  print(curTransform[0:3,:][:,0:3])
+  print(curQuat)
+  quatDiff = t3d.quaternions.qmult(targetQuat, t3d.quaternions.qinverse(curQuat))
+  return(np.concatenate((transDiff, quatDiff)))
+  
 
 if __name__=="__main__":
   import unittest
@@ -60,15 +73,32 @@ if __name__=="__main__":
       self.assertTrue(numpy_are_equal(get_motion_frame_matrix(np.array([[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]]),np.array([1,0,0])), 
                        np.array([[0,0,1,0],[1,0,0,0],[0,1,0,0],[0,0,0,1]])))
       self.assertTrue(numpy_are_equal(get_motion_frame_matrix(np.array([[1,0,0,0],[0,1,0,1],[0,0,1,1],[0,0,0,1]]),np.array([1,1,1])), 
-                       np.array([[0,0,1,0],[1,0,0,1],[0,1,0,1],[0,0,0,1]])))
+                       np.array([[0,0,1,0],[1,0,0,0],[0,1,0,0],[0,0,0,1]])))
       self.assertTrue(numpy_are_equal(get_motion_frame_matrix(np.array([[1,0,0,1],[0,1,0,1],[0,0,1,0],[0,0,0,1]]),np.array([1,1,1])), 
-                       np.array([[0,-1,0,1],[1,0,0,1],[0,0,1,0],[0,0,0,1]])))
+                       np.array([[0,-1,0,0],[1,0,0,0],[0,0,1,0],[0,0,0,1]])))
       self.assertTrue(numpy_are_equal(get_motion_frame_matrix(np.array([[0,1,0,0],[-1,0,0,0],[0,0,1,0],[0,0,0,1]]),np.array([1,0,0])), 
-                       np.array([[1,0,0,0],[0,0,-1,0],[0,1,0,0],[0,0,0,1]])))
+                       np.array([[0,0,1,0],[1,0,0,0],[0,1,0,0],[0,0,0,1]])))
 
     def test_distance(self):
       self.assertAlmostEqual(distance(np.array([0,0,1]),np.array([0,0,0])),1)
       self.assertAlmostEqual(distance(np.array([1,2,3]),np.array([2,3,4])),np.sqrt(3))
+
+    def test_get_transform_difference(self):
+      self.assertTrue(numpy_are_equal(
+        get_transform_difference(np.array([[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]]),
+                                 [1,1,1],
+                                 [1,0,0,0]),
+      	[1,1,1,1,0,0,0]))
+      self.assertTrue(numpy_are_equal(
+        get_transform_difference(np.array([[1,0,0,1],[0,1,0,2],[0,0,1,3],[0,0,0,1]]),
+                                 [1,1,1],
+                                 [1,0,0,0]),
+      	[0,-1,-2,1,0,0,0]))
+      self.assertTrue(numpy_are_equal(
+        get_transform_difference(np.array([[0,-1,0,1],[1,0,0,2],[0,0,1,3],[0,0,0,1]]),
+                                 [1,1,1],
+                                 [1,0,0,0]),
+      	[0,-1,-2,np.sqrt(0.5),0,0,-np.sqrt(0.5)]))
 
 
   unittest.main()

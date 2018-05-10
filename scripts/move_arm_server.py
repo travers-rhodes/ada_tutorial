@@ -5,6 +5,7 @@ import numpy as np
 
 from ada_tutorial.srv import MoveArm, MoveArmResponse
 from ada_cartesian_control import AdaCartesianControl
+from ada_jacobian_control import AdaJacobianControl
 
 def main(args):
   # initialize the ros node 
@@ -15,7 +16,7 @@ def main(args):
 
 class MoveArmService:
   def __init__(self, args):
-    self.ada_control = AdaCartesianControl(args)
+    self.ada_control = AdaJacobianControl(args)
 
   # takes in a MoveArm request and calls ada_control 
   # to move the arm based on that request

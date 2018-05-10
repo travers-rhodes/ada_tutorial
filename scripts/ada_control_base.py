@@ -29,8 +29,9 @@ class AdaControlBase(object):
     self.robot.SetDOFVelocityLimits(vel_limits * 0.5)
     self.manip = self.robot.SetActiveManipulator("Mico")
     self.manip_rob = openravepy.interfaces.BaseManipulation(self.robot) # create the interface for basic manipulation programs
-     
+
     self.rot = self.generate_target_rotmat()
+    self.quat = t3d.quaternions.mat2quat(self.rot)
     
     # even though it's not obvious how we use this, we need to initialize the IKModel on self.robot
     ikmodel = openravepy.databases.inversekinematics.InverseKinematicsModel(self.robot,iktype=openravepy.IkParameterization.Type.Transform6D)
