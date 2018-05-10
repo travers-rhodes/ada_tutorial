@@ -60,7 +60,7 @@ class AdaCartesianControl:
   # endLoc must be a length 3 np.array
   # if constrainMotion is set to False, don't allow the robot end effector to rotate, and only allow linear motion toward the goal
   # otherwise, don't constrain motion
-  def move_to_target(self, endLoc, timeoutSecs, constrainMotion=False):
+  def move_to_target(self, endLoc, timeoutSecs=0, constrainMotion=False):
     if self.is_close_enough_to_target(endLoc):
       if timeoutSecs == 0:
         rospy.sleep(0.1)
