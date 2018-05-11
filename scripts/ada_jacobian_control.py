@@ -1,0 +1,41 @@
+#!/usr/bin/python
+"""
+Use gradient descent to move the hand to the cartesian target
+"""
+import rospy
+import numpy as np
+import openravepy
+
+import transform_helpers as th
+from ada_control_base import AdaControlBase
+
+class AdaJacobianControl(AdaControlBase):
+  def __init__(self, args): 
+    super(AdaJacobianControl, self).__init__(args)
+
+  # endLoc must be a length 3 np.array
+  # if constrainMotion is set to False, don't allow the robot end effector to rotate, and only allow linear motion toward the goal
+  # otherwise, don't constrain motion
+  def move_to_target(self, endLoc, constrainMotion=False):
+    while not self.is_close_enough_to_target(endLoc):
+      self.make_step_to_target(endLoc, constrainMotion)
+
+  def make_step_to_target(self, endLoc, constrainMotion):
+    with self.env:
+      curtrans = self.manip.GetEndEffectorTransform()
+      rospy.logwarn("curtrans is %s" % curtrans)
+      dir_to_go = th.get_transform_difference(curtrans, endLoc, self.quat)
+      
+      if constrainMotion:
+        pass
+      
+    rospy.logwarn(traj) 
+    self.robot.ExecuteTrajectory(traj)
+
+  def create_two_point_trajectory(jointvalues):
+    traj = openrave.RaveCreateTrajectory(env,'')
+    traj.Init(robot.GetActiveConfigurationSpecification())
+    traj.Insert(0,robot.GetActiveDOFValues())
+    traj.Insert(1,goalvalues)
+    openrave.planningutils.RetimeActiveDOFTrajectory(traj,self.robot,hastimestamps=False,maxvelmult=1,plannername='ParabolicTrajectoryRetimer')
+    return traj
