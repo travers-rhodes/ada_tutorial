@@ -16,6 +16,7 @@ def main(args):
 
 class MoveArmService:
   def __init__(self, args):
+    #self.ada_control = AdaCartesianControl(args)
     self.ada_control = AdaJacobianControl(args)
 
   # takes in a MoveArm request and calls ada_control 

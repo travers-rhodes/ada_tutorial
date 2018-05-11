@@ -44,7 +44,7 @@ class AdaControlBase(object):
   # generate the rotation matrix corresponding to the desired end-effector rotation
   def generate_target_rotmat(self):
     roty = t3d.quaternions.quat2mat([0,np.sqrt(2), 0, np.sqrt(2)])
-    rotx = t3d.quaternions.quat2mat([np.sqrt(2),0, 0, np.sqrt(2)])
+    rotx = t3d.quaternions.quat2mat([-np.sqrt(2),0, 0, np.sqrt(2)])
     rot = roty.dot(rotx)
     return rot
   
