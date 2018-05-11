@@ -25,17 +25,25 @@ class AdaJacobianControl(AdaControlBase):
       curtrans = self.manip.GetEndEffectorTransform()
       rospy.logwarn("curtrans is %s" % curtrans)
       dir_to_go = th.get_transform_difference(curtrans, endLoc, self.quat)
-      
+      rospy.logwarn("dir_to_go is %s"%dir_to_go)
+      jac = self.manip.CalculateJacobian()
+      rospy.logwarn("jacobian is %s"%jac)
+      curLoc = self.manip.GetDOFValues()
+      rospy.logwarn("curLoc is %s"%curLoc)
+      nextLoc = np.transpose(jac).dot(dir_to_go[0:3]) 
+      rospy.logwarn("nextLoc is %s"%nextLoc)
+      nextLoc = curLoc + nextLoc
+      traj = self.create_two_point_trajectory(nextLoc)
       if constrainMotion:
         pass
       
     rospy.logwarn(traj) 
     self.robot.ExecuteTrajectory(traj)
 
-  def create_two_point_trajectory(jointvalues):
-    traj = openrave.RaveCreateTrajectory(env,'')
-    traj.Init(robot.GetActiveConfigurationSpecification())
-    traj.Insert(0,robot.GetActiveDOFValues())
+  def create_two_point_trajectory(self,jointvalues):
+    traj = openravepy.RaveCreateTrajectory(self.env,'')
+    traj.Init(self.robot.GetActiveConfigurationSpecification())
+    traj.Insert(0,self.robot.GetActiveDOFValues())
     traj.Insert(1,goalvalues)
-    openrave.planningutils.RetimeActiveDOFTrajectory(traj,self.robot,hastimestamps=False,maxvelmult=1,plannername='ParabolicTrajectoryRetimer')
+    openravepy.planningutils.RetimeActiveDOFTrajectory(traj,self.robot,hastimestamps=False,maxvelmult=1,plannername='ParabolicTrajectoryRetimer')
     return traj
