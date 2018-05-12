@@ -34,7 +34,7 @@ class AdaJacobianControl(AdaControlBase):
       #rospy.logwarn("curLoc is %s"%curLoc)
       nextLoc = np.transpose(jac).dot(dir_to_go[0:3]) 
       #rospy.logwarn("nextLoc is %s"%nextLoc)
-      nextLoc = curLoc + nextLoc*
+      nextLoc = curLoc + nextLoc
       traj = self.create_two_point_trajectory(nextLoc)
       if constrainMotion:
         pass
