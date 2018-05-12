@@ -40,4 +40,8 @@ class AdaCartesianControl(AdaControlBase):
         outputtrajobj=True,
         execute=False,
         steplength=0.002) # tutorial had 0.002
+    rospy.logwarn("Executing trajectory")
     self.robot.ExecuteTrajectory(traj)
+    rospy.logwarn("Waiting for trajectory")
+    self.robot.WaitForController(0)
+    rospy.logwarn("Trajectory should be done now")

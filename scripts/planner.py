@@ -81,12 +81,12 @@ if __name__=="__main__":
   # initialize the ros node 
   rospy.init_node('adapy_tracker', anonymous=True)
   # start tracker running and start following locations
-  t = Tracker()
+  track = Tracker()
   from threading import Thread
-  thread = Thread(target=t.follow_mouth, args = (1,))
+  thread = Thread(target=track.follow_mouth, args = (1,))
   thread.start()
 
-  #rospy.spin()
+  rospy.spin()
 
   pub = rospy.Publisher(point_topic, Point, queue_size=10)
   h = Header()
@@ -98,9 +98,10 @@ if __name__=="__main__":
 
   for pose in poses+poses+poses:
     #mesg = tfMessage([TransformStamped(h, "dummy_frame", Transform(Vector3(pose[0], pose[1], pose[2]), None))])
-    mesg = Point(pose[0], pose[1], pose[2])
-    pub.publish(mesg)
-    rospy.sleep(2)
+    print("GOING TO MOVE") 
+    track.move_to_target(target=Point(pose[0], pose[1], pose[2]), constrainMotion=True)
+    print("Service Returned") 
+    rospy.sleep(1)
   thread.join()
 
 

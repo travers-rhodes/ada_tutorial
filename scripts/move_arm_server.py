@@ -5,7 +5,7 @@ import numpy as np
 
 from ada_tutorial.srv import MoveArm, MoveArmResponse
 from ada_cartesian_control import AdaCartesianControl
-from ada_jacobian_control import AdaJacobianControl
+#from ada_jacobian_control import AdaJacobianControl
 
 def main(args):
   # initialize the ros node 
@@ -16,8 +16,8 @@ def main(args):
 
 class MoveArmService:
   def __init__(self, args):
-    #self.ada_control = AdaCartesianControl(args)
-    self.ada_control = AdaJacobianControl(args)
+    self.ada_control = AdaCartesianControl(args)
+    #self.ada_control = AdaJacobianControl(args)
 
   # takes in a MoveArm request and calls ada_control 
   # to move the arm based on that request
@@ -25,8 +25,13 @@ class MoveArmService:
     # move_to_target's endLoc should be a length 3 np.array
     # of the coordinates to move the end-effector of the arm to in
     # cartesian coordinates relative to the base frame of the arm
-    self.ada_control.move_to_target(endLoc=np.array([req.target.x, req.target.y, req.target.z]), constrainMotion=req.constrainMotion)
-    return MoveArmResponse(True)
+    isSuccess = True
+    try:
+      self.ada_control.move_to_target(endLoc=np.array([req.target.x, req.target.y, req.target.z]), constrainMotion=req.constrainMotion)
+    except Exception as e:
+      rospy.logerr(e)
+      isSuccess = False
+    return MoveArmResponse(isSuccess)
 
 
 if __name__=="__main__":
