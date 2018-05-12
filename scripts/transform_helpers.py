@@ -53,16 +53,30 @@ def get_transform_difference(curTransform, targetLoc, targetQuat):
   curLoc = curTransform[0:3,3]
   transDiff = targetLoc - curLoc
   curQuat = t3d.quaternions.mat2quat(curTransform[0:3,:][:,0:3])
-  print(curTransform[0:3,:][:,0:3])
-  print(curQuat)
-  quatDiff = t3d.quaternions.qmult(targetQuat, t3d.quaternions.qinverse(curQuat))
+  #print(curTransform[0:3,:][:,0:3])
+  #print(curQuat)
+  quatDiff = t3d.quaternions.qmult(t3d.quaternions.qinverse(curQuat), targetQuat)
   return(np.concatenate((transDiff, quatDiff)))
+
+def mult_jacobian_with_direction(t3drotjac, quat_dir):
+  # we do this out by hand to avoid any snafoos
+  # we convert both to axis angle
+  # then we dot product the axes
+  # then we multiply by both angles
+  jointDelta = np.zeros((t3drotjac.shape[1],))
+  ax_quat, angle_quat = t3d.quaternions.quat2axangle(quat_dir)
+  for i, joint in enumerate(np.transpose(t3drotjac)):
+    ax_joint, angle_joint = t3d.quaternions.quat2axangle(joint)
+    collinearity = np.dot(ax_quat, ax_joint)
+    jointDelta[i] = collinearity*angle_quat*angle_joint
+  return(jointDelta) 
   
 
 if __name__=="__main__":
   import unittest
   def numpy_are_equal(mat1, mat2):
-    if np.all(mat1 - mat2 == 0):
+    epsilon = 0.00000001
+    if np.all(np.abs(mat1 - mat2) < epsilon):
       return True
     else:
       print("The following matrices were not equal: %s \n %s"% (mat1, mat2))
@@ -99,6 +113,15 @@ if __name__=="__main__":
                                  [1,1,1],
                                  [1,0,0,0]),
       	[0,-1,-2,np.sqrt(0.5),0,0,-np.sqrt(0.5)]))
+      #self.assertTrue(numpy_are_equal(
+      #  get_transform_difference(np.array([[0,-1,0,0],[-1,0,0,0],[0,0,-1,0],[0,0,0,1]]),
+      #                           [0,0,0],
+      #                           [1,0,0,0]),
+      #	[0,0,0,0,0,np.sqrt(0.5),-np.sqrt(0.5)]))
+
+    def test_mult_jacobian_with_direction(self):
+      self.assertTrue(numpy_are_equal(mult_jacobian_with_direction(np.transpose(np.array([[1,0,0,0],[1,0,0,0]])), np.array([1,0,0,0])), np.array([0,0])))
+      self.assertTrue(numpy_are_equal(mult_jacobian_with_direction(np.transpose(np.array([[0.5,0.5,0,0],[1,0,0,0]])), np.array([0.5,0.5,0,0])), np.array([np.pi**2/4.0,0])))
 
 
   unittest.main()

@@ -51,10 +51,10 @@ class AdaControlBase(object):
   # return a boolean for whether the end-effector is already at the endLoc target
   # if the end-effector is already close enough to the target, then there's no need
   # to move the end-effector to the target
-  def is_close_enough_to_target(self, endLoc):
+  def is_close_enough_to_target(self, endLoc, epsilon = 0.001):
     dist = th.distance(self.get_cur_loc(), endLoc)
     rospy.logwarn("current distance is %f" % dist)
-    return(dist < 0.001)
+    return(dist < epsilon)
 
   def get_cur_loc(self):
     Tee = self.manip.GetEndEffectorTransform()
