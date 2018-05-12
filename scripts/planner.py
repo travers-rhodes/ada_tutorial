@@ -86,7 +86,7 @@ if __name__=="__main__":
   thread = Thread(target=track.follow_mouth, args = (1,))
   thread.start()
 
-  rospy.spin()
+  #rospy.spin()
 
   pub = rospy.Publisher(point_topic, Point, queue_size=10)
   h = Header()

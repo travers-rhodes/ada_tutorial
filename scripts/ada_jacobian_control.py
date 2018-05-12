@@ -10,12 +10,14 @@ import transform_helpers as th
 from ada_control_base import AdaControlBase
 
 def get_next_loc(curLoc, nextTransDiff, nextRotDiff):
-  nextDiff = nextRotDiff #+ nextTransDiff
+  nextRotDiff = np.multiply(np.array([0,0,0,0,0,1]), nextRotDiff) * 0.1
+  nextRotDiff = np.array([0,0,0,0,0,1]) * 0.1
+  nextDiff = -nextRotDiff# + nextTransDiff
   curMaxChange = max(abs(nextDiff))
-  desMaxChange = np.pi/10.0
-  if curMaxChange > desMaxChange:
-    nextDiff = nextDiff*desMaxChange/curMaxChange
+  #if curMaxChange > desMaxChange:
+  #  nextDiff = nextDiff*desMaxChange/curMaxChange
   rospy.logwarn("so, we want to update our joint angles to change by %s" % nextDiff)
+  rospy.logwarn("moving in direction %s"%nextDiff)
   return curLoc + nextDiff
 
 def multiply_rotation_jacobian_with_quat(rotjac, dir_to_go):
@@ -40,11 +42,11 @@ class AdaJacobianControl(AdaControlBase):
     with self.env:
       curtrans = self.manip.GetEndEffectorTransform()
       rospy.logwarn("Destination quat is %s" % self.quat)
-      rospy.logwarn("current transform is %s" % curtrans)
       dir_to_go = th.get_transform_difference(curtrans, endLoc, self.quat)
       rospy.logwarn("this silly computer is saying we need to go %s"%dir_to_go[3:7])
       jac = self.manip.CalculateJacobian()
       rotjac = self.manip.CalculateRotationJacobian()
+      rospy.logwarn("rotjac is %s"%rotjac)
       curLoc = self.manip.GetDOFValues()
       nextTransDiff = np.transpose(jac).dot(dir_to_go[0:3]) 
       nextRotDiff = multiply_rotation_jacobian_with_quat(rotjac, dir_to_go)

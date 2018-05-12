@@ -1,4 +1,4 @@
 <launch>
-  <node name="move_arm_service" pkg="ada_tutorial" type="move_arm_server.py" args="-v"/>
+  <node name="move_arm_service" pkg="ada_tutorial" type="move_arm_server.py" args="-s -v"/>
   <node name="planner" pkg="ada_tutorial" type="planner.py"/>
 </launch>

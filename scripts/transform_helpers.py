@@ -1,5 +1,6 @@
 import numpy as np
 import transforms3d as t3d
+import rospy
 
 # given two 3d points curLoc and endLoc
 # return the transformation associated with the frame
@@ -53,9 +54,9 @@ def get_transform_difference(curTransform, targetLoc, targetQuat):
   curLoc = curTransform[0:3,3]
   transDiff = targetLoc - curLoc
   curQuat = t3d.quaternions.mat2quat(curTransform[0:3,:][:,0:3])
-  #print(curTransform[0:3,:][:,0:3])
-  #print(curQuat)
+  rospy.logwarn("CURQUAT%s"%curQuat)
   quatDiff = t3d.quaternions.qmult(t3d.quaternions.qinverse(curQuat), targetQuat)
+  rospy.logwarn("QUATDIFF%s"%quatDiff)
   return(np.concatenate((transDiff, quatDiff)))
 
 def mult_jacobian_with_direction(t3drotjac, quat_dir):
