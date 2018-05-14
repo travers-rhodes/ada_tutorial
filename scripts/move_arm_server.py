@@ -21,6 +21,7 @@ class MoveArmService:
       self.ada_control = AdaJacobianControl(args)
     else:
       self.ada_control = AdaCartesianControl(args)
+
   # takes in a MoveArm request and calls ada_control 
   # to move the arm based on that request
   def handle_move_arm(self, req):
@@ -35,7 +36,6 @@ class MoveArmService:
       isSuccess = False
       raise
     return MoveArmResponse(isSuccess)
-
 
 if __name__=="__main__":
   # parse input arguments

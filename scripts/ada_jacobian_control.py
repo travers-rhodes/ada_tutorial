@@ -9,7 +9,7 @@ import openravepy
 import transform_helpers as th
 from ada_control_base import AdaControlBase
 
-def get_next_loc(curLoc, nextTransDiff, nextRotDiff):
+def get_step(nextTransDiff, nextRotDiff):
   rotStepAlpha = 0.1
   transStepAlpha = 1 
   nextDiff = rotStepAlpha * nextRotDiff + transStepAlpha * nextTransDiff
@@ -18,8 +18,8 @@ def get_next_loc(curLoc, nextTransDiff, nextRotDiff):
   #  nextDiff = nextDiff*desMaxChange/curMaxChange
   rospy.logwarn("so, we want to update our joint angles to change by %s" % nextDiff)
   rospy.logwarn("moving in direction %s"%nextDiff)
-  return curLoc + nextDiff
-
+  return nextDiff
+ 
 class AdaJacobianControl(AdaControlBase):
   def __init__(self, args): 
     super(AdaJacobianControl, self).__init__(args)
@@ -37,15 +37,19 @@ class AdaJacobianControl(AdaControlBase):
     with self.env:
       curtrans = self.manip.GetEndEffectorTransform()
       diffTrans, diffRotAxis, diffRotAngle = th.get_transform_difference_axis_angle(curtrans, endLoc, self.quat)
-      # get the joint change needed in direction of desired translation
       jac= self.manip.CalculateJacobian()
-      nextTransDiff = np.transpose(jac).dot(diffTrans) 
-      # get the joint change needed in direction of desired rotation
       angVelJac = self.manip.CalculateAngularVelocityJacobian()
-      nextRotDiff = th.convert_axis_angle_to_joint(angVelJac, diffRotAxis, diffRotAngle)
       curLoc = self.manip.GetDOFValues()
-      nextLoc = get_next_loc(curLoc, nextTransDiff, nextRotDiff)
-      traj = self.create_two_point_trajectory(nextLoc)
+      jacobianTranspose = False
+      if jacobianTranspose:
+        # get the joint change needed in direction of desired translation
+        nextTransDiff = np.transpose(jac).dot(diffTrans) 
+        # get the joint change needed in direction of desired rotation
+        nextRotDiff = th.convert_axis_angle_to_joint(angVelJac, diffRotAxis, diffRotAngle)
+        step = get_step(nextTransDiff, nextRotDiff)
+      else:
+        step = th.least_squares_step(jac, angVelJac, diffTrans, diffRotAxis * diffRotAngle) * 0.1
+      traj = self.create_two_point_trajectory(curLoc + step)
       if constrainMotion:
         pass
       

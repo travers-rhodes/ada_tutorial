@@ -80,14 +80,25 @@ def get_transform_difference_axis_angle(curTransform, targetLoc, targetQuat):
   return((transDiff, diff_axis_base, diff_angle))
 
 def convert_axis_angle_to_joint(angleAxesJoints, rotAxis, rotAngle):
-  # we do this out by hand to avoid any snafoos
-  # we dot product the axes
-  # then we multiply by the angle
-  jointDelta = np.zeros((angleAxesJoints.shape[1],))
-  for i, joint in enumerate(np.transpose(angleAxesJoints)):
-    collinearity = np.dot(rotAxis, joint)
-    jointDelta[i] = collinearity*rotAngle
-  return(jointDelta) 
+  rotAxis = np.array(rotAxis)
+  jointChange = np.transpose(angleAxesJoints).dot(rotAxis*rotAngle)
+  return jointChange.transpose()
+  
+# Show the angle change necessary to approximately move the robot so that 
+# it moves diffTrans and it rotates diffAngular
+# PARAMS:
+# ** jac: the linear translation jacobian (3xjoints)
+# ** angVelJac: the list of axes in base frame coordinates around which each joint rotates (3xjoints)
+# ** diffTrans: the desired translation of the end-effector in base coords
+# ** diffAngular: the desired rotation of the end-effector (unit axis times rotation angle) 
+def least_squares_step(jac, angVelJac, diffTrans, diffAngular):
+  combinedJacs = np.concatenate((jac, angVelJac))
+  #print(combinedJacs)
+  combinedGoal = np.concatenate((diffTrans, diffAngular))
+  #print(combinedGoal)
+  joints = np.linalg.lstsq(combinedJacs, combinedGoal)[0]
+  #print(joints)
+  return(joints)
   
 
 if __name__=="__main__":
@@ -108,6 +119,12 @@ if __name__=="__main__":
       return False
   
   class TestMethods(unittest.TestCase):
+    def test_least_squares_step(self):
+      self.assertTrue(numpy_are_equal(least_squares_step([[1,0],[0,1],[0,0]], [[1,0],[0,1],[0,0]],[1,1,0],[1,1,0]),
+                                      [1,1]))
+      self.assertTrue(numpy_are_equal(least_squares_step([[-1,0],[0,1],[0,0]], [[-1,0],[0,1],[0,0]],[1,1,0],[1,1,0]),
+                                      [-1,1]))
+
     def test_get_motion_frame_matrix(self):
       self.assertTrue(numpy_are_equal(get_motion_frame_matrix(np.array([[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]]),np.array([1,0,0])), 
                        np.array([[0,0,1,0],[1,0,0,0],[0,1,0,0],[0,0,0,1]])))
