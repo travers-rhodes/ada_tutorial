@@ -9,20 +9,21 @@ from ada_jacobian_control import AdaJacobianControl
 def main(args):
   # initialize the ros node 
   rospy.init_node('track_arm_server', anonymous=True)
-  tas = TrackArmService(args, np.array([0.41676946, -0.2959789,   0.552686472]))
+  tas = TrackArmService(args)
   s = rospy.Service('update_track_target', MoveArm, tas.handle_target_update)
   tas.RunTracking()
   rospy.spin() 
 
 class TrackArmService:
-  def __init__(self, args, target):
+  def __init__(self, args):
     self.ada_control = AdaJacobianControl(args)
-    self.target = target
+    self.target = None
 
   def RunTracking(self):
     while not rospy.is_shutdown():
       try:
-        self.ada_control.make_step_to_target(self.target, constrainMotion=False)
+        if self.target is not None:
+          self.ada_control.make_step_to_target(self.target, constrainMotion=False)
       except Exception as e:
         rospy.logerr(e)
         raise
