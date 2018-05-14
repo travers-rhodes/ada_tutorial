@@ -1,0 +1,7 @@
+<launch>
+  <arg name="track_arm_server_flags" default="-s -v"/>
+  <arg name="fast_planner_flags" default="-s"/>
+
+  <node name="track_arm_service" pkg="ada_tutorial" type="track_arm_server.py" args="$(arg track_arm_server_flags)"/>
+  <node name="fast_planner" pkg="ada_tutorial" type="fast_planner.py" args="$(arg fast_planner_flags)"/>
+</launch>

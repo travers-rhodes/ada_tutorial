@@ -23,13 +23,13 @@ def get_step(nextTransDiff, nextRotDiff):
 class AdaJacobianControl(AdaControlBase):
   def __init__(self, args): 
     super(AdaJacobianControl, self).__init__(args)
+    arm_indices = self.manip.GetArmIndices()
+    self.robot.SetActiveDOFs(arm_indices)
 
   # endLoc must be a length 3 np.array
   # if constrainMotion is set to False, don't allow the robot end effector to rotate, and only allow linear motion toward the goal
   # otherwise, don't constrain motion
   def move_to_target(self, endLoc, constrainMotion=False):
-    arm_indices = self.manip.GetArmIndices()
-    self.robot.SetActiveDOFs(arm_indices)
     while not self.is_close_enough_to_target(endLoc, epsilon=0.02):
       self.make_step_to_target(endLoc, constrainMotion)
 
