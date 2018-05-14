@@ -5,6 +5,7 @@ Use the MoveToHandPosition command to move the hand via cartesian control
 import rospy
 import numpy as np
 
+import transforms3d as t3d
 import transform_helpers as th
 from ada_control_base import AdaControlBase
 
@@ -45,3 +46,11 @@ class AdaCartesianControl(AdaControlBase):
     rospy.logwarn("Waiting for trajectory")
     self.robot.WaitForController(0)
     rospy.logwarn("Trajectory should be done now")
+    curtrans = self.manip.GetEndEffectorTransform()
+    rospy.logwarn("curtrans is %s"%curtrans)
+    curquat = t3d.quaternions.mat2quat(curtrans[0:3,:][:,0:3])
+    rospy.logwarn("curquat is %s"%curquat)
+    rotjac = self.manip.CalculateRotationJacobian()
+    rospy.logwarn("rotjac is %s"%rotjac)
+    angVeljac = self.manip.CalculateAngularVelocityJacobian()
+    rospy.logwarn("angVelJac is %s"%angVeljac)

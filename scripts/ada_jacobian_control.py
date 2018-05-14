@@ -10,20 +10,15 @@ import transform_helpers as th
 from ada_control_base import AdaControlBase
 
 def get_next_loc(curLoc, nextTransDiff, nextRotDiff):
-  nextRotDiff = np.multiply(np.array([0,0,0,0,0,1]), nextRotDiff) * 0.1
-  nextRotDiff = np.array([0,0,0,0,0,1]) * 0.1
-  nextDiff = -nextRotDiff# + nextTransDiff
+  rotStepAlpha = 0.1
+  transStepAlpha = 1 
+  nextDiff = rotStepAlpha * nextRotDiff + transStepAlpha * nextTransDiff
   curMaxChange = max(abs(nextDiff))
   #if curMaxChange > desMaxChange:
   #  nextDiff = nextDiff*desMaxChange/curMaxChange
   rospy.logwarn("so, we want to update our joint angles to change by %s" % nextDiff)
   rospy.logwarn("moving in direction %s"%nextDiff)
   return curLoc + nextDiff
-
-def multiply_rotation_jacobian_with_quat(rotjac, dir_to_go):
-  # t3d wants the scalar part to come first
-  t3dRotJacobian = np.concatenate((rotjac[3:4,:], rotjac[0:3,:]))
-  return th.mult_jacobian_with_direction(t3dRotJacobian, dir_to_go[3:7])
 
 class AdaJacobianControl(AdaControlBase):
   def __init__(self, args): 
@@ -35,21 +30,20 @@ class AdaJacobianControl(AdaControlBase):
   def move_to_target(self, endLoc, constrainMotion=False):
     arm_indices = self.manip.GetArmIndices()
     self.robot.SetActiveDOFs(arm_indices)
-    while not self.is_close_enough_to_target(endLoc, epsilon=0.01):
+    while not self.is_close_enough_to_target(endLoc, epsilon=0.02):
       self.make_step_to_target(endLoc, constrainMotion)
 
   def make_step_to_target(self, endLoc, constrainMotion):
     with self.env:
       curtrans = self.manip.GetEndEffectorTransform()
-      rospy.logwarn("Destination quat is %s" % self.quat)
-      dir_to_go = th.get_transform_difference(curtrans, endLoc, self.quat)
-      rospy.logwarn("this silly computer is saying we need to go %s"%dir_to_go[3:7])
-      jac = self.manip.CalculateJacobian()
-      rotjac = self.manip.CalculateRotationJacobian()
-      rospy.logwarn("rotjac is %s"%rotjac)
+      diffTrans, diffRotAxis, diffRotAngle = th.get_transform_difference_axis_angle(curtrans, endLoc, self.quat)
+      # get the joint change needed in direction of desired translation
+      jac= self.manip.CalculateJacobian()
+      nextTransDiff = np.transpose(jac).dot(diffTrans) 
+      # get the joint change needed in direction of desired rotation
+      angVelJac = self.manip.CalculateAngularVelocityJacobian()
+      nextRotDiff = th.convert_axis_angle_to_joint(angVelJac, diffRotAxis, diffRotAngle)
       curLoc = self.manip.GetDOFValues()
-      nextTransDiff = np.transpose(jac).dot(dir_to_go[0:3]) 
-      nextRotDiff = multiply_rotation_jacobian_with_quat(rotjac, dir_to_go)
       nextLoc = get_next_loc(curLoc, nextTransDiff, nextRotDiff)
       traj = self.create_two_point_trajectory(nextLoc)
       if constrainMotion:

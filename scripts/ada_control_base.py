@@ -42,9 +42,20 @@ class AdaControlBase(object):
       ikmodel.autogenerate()
 
   # generate the rotation matrix corresponding to the desired end-effector rotation
+  # this multiplying this rotmat times points written in the end-effector frame
+  # gives points in the base frame
   def generate_target_rotmat(self):
-    roty = t3d.quaternions.quat2mat([0,np.sqrt(2), 0, np.sqrt(2)])
-    rotx = t3d.quaternions.quat2mat([-np.sqrt(2),0, 0, np.sqrt(2)])
+    rot = np.array([[0,0,1],[0,-1,0],[1,0,0]])
+    # the identity position. gripper points along z. back of hand (camera) points along y
+    rot = np.eye(3)
+    #rot = np.array([[1,0,0],[0,-1,0],[0,0,-1]])
+    rot = np.array([[0,0,1],[0,1,0],[-1,0,0]])
+    # close gazebo init start position
+    rot = np.array([[0,0,1],[1,0,0],[0,1,0]])
+    # camera between hand and face, by just rotating joint 6 from gazebo init (rotate around y from identity)
+    rot = np.array([[0,0,1],[0,1,0],[-1,0,0]])
+    roty = t3d.quaternions.quat2mat([0,np.sqrt(2)/2, 0, np.sqrt(2)/2])
+    rotx = t3d.quaternions.quat2mat([-np.sqrt(2)/2,0, 0, np.sqrt(2)/2])
     rot = roty.dot(rotx)
     return rot
   

@@ -1,6 +1,5 @@
 import numpy as np
 import transforms3d as t3d
-import rospy
 
 # given two 3d points curLoc and endLoc
 # return the transformation associated with the frame
@@ -48,33 +47,58 @@ def distance(curLoc, endLoc):
   dist = np.sqrt(sum(diff**2))
   return dist
 
-# note that we're following the transform3d convention that the state representation
+# given the current transform and the target location and target orientation, 
+# what is the translation and rotation we need to perform to move current transform to target
+# PARAMS:
+# * curTransform: A matrix that allows us to transform points written in EndEff frame to Base frame
+# * targetLoc: the target xyz coordinate of the EndEff frame
+# * targetQuat: the tarrget quaternion rotation of the EndEff frame.
+# ***That is, if you convert targetLoc and targetQuat to a transformation matrix, that will give you
+# ***a matrix that converts points written in the target frame to the base frame
+# OUTPUT: 
+# A vector following the transform3d convention that the state representation
 # is [x, y, z, qw, qx, qy, qz]
-def get_transform_difference(curTransform, targetLoc, targetQuat):
+# that gives the transformation (written in base frame coordinates) needed to apply to points in
+# the target frame that returns points in the current frame.
+# This can also be thought of as the transformation we need to add to the current frame in order to
+# move that frame to the target frame.
+def get_transform_difference_axis_angle(curTransform, targetLoc, targetQuat):
   curLoc = curTransform[0:3,3]
   transDiff = targetLoc - curLoc
-  curQuat = t3d.quaternions.mat2quat(curTransform[0:3,:][:,0:3])
-  rospy.logwarn("CURQUAT%s"%curQuat)
+  curMatTransform = curTransform[0:3,:][:,0:3]
+  curQuat = t3d.quaternions.mat2quat(curMatTransform)
   quatDiff = t3d.quaternions.qmult(t3d.quaternions.qinverse(curQuat), targetQuat)
-  rospy.logwarn("QUATDIFF%s"%quatDiff)
-  return(np.concatenate((transDiff, quatDiff)))
+  #print("curquat is %s, targetQuat is %s, diffQuat is %s"%(curQuat, targetQuat, quatDiff))
+  # we convert quatDiff to axis angle representation.
+  # fun fact: because quatDiff is a rotation between cur and target frames, its axis-angle
+  # representation is the same in both frames (axis of rotation doesn't move when rotation)
+  diff_axis, diff_angle = t3d.quaternions.quat2axangle(quatDiff)
+  #print("diffAxis, diffAngle is %s, %s"%(diff_axis, diff_angle))
+  # now, we rotate diff_axis to the base frame and return
+  diff_axis_base = curMatTransform.dot(diff_axis)
+  #print(diff_axis_base)
+  return((transDiff, diff_axis_base, diff_angle))
 
-def mult_jacobian_with_direction(t3drotjac, quat_dir):
+def convert_axis_angle_to_joint(angleAxesJoints, rotAxis, rotAngle):
   # we do this out by hand to avoid any snafoos
-  # we convert both to axis angle
-  # then we dot product the axes
-  # then we multiply by both angles
-  jointDelta = np.zeros((t3drotjac.shape[1],))
-  ax_quat, angle_quat = t3d.quaternions.quat2axangle(quat_dir)
-  for i, joint in enumerate(np.transpose(t3drotjac)):
-    ax_joint, angle_joint = t3d.quaternions.quat2axangle(joint)
-    collinearity = np.dot(ax_quat, ax_joint)
-    jointDelta[i] = collinearity*angle_quat*angle_joint
+  # we dot product the axes
+  # then we multiply by the angle
+  jointDelta = np.zeros((angleAxesJoints.shape[1],))
+  for i, joint in enumerate(np.transpose(angleAxesJoints)):
+    collinearity = np.dot(rotAxis, joint)
+    jointDelta[i] = collinearity*rotAngle
   return(jointDelta) 
   
 
 if __name__=="__main__":
   import unittest
+
+  def tuple_are_equal(tup1, tup2):
+    allTrue = True
+    for i,_ in enumerate(tup1):
+      allTrue &= numpy_are_equal(tup1[i], tup2[i])
+    return allTrue
+
   def numpy_are_equal(mat1, mat2):
     epsilon = 0.00000001
     if np.all(np.abs(mat1 - mat2) < epsilon):
@@ -98,31 +122,38 @@ if __name__=="__main__":
       self.assertAlmostEqual(distance(np.array([0,0,1]),np.array([0,0,0])),1)
       self.assertAlmostEqual(distance(np.array([1,2,3]),np.array([2,3,4])),np.sqrt(3))
 
-    def test_get_transform_difference(self):
-      self.assertTrue(numpy_are_equal(
-        get_transform_difference(np.array([[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]]),
+    def test_get_transform_difference_axis_angle(self):
+      self.assertTrue(tuple_are_equal(
+        get_transform_difference_axis_angle(np.array([[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]]),
                                  [1,1,1],
                                  [1,0,0,0]),
-      	[1,1,1,1,0,0,0]))
-      self.assertTrue(numpy_are_equal(
-        get_transform_difference(np.array([[1,0,0,1],[0,1,0,2],[0,0,1,3],[0,0,0,1]]),
+      	([1,1,1],[1,0,0],0)))
+      self.assertTrue(tuple_are_equal(
+        get_transform_difference_axis_angle(np.array([[1,0,0,1],[0,1,0,2],[0,0,1,3],[0,0,0,1]]),
                                  [1,1,1],
                                  [1,0,0,0]),
-      	[0,-1,-2,1,0,0,0]))
-      self.assertTrue(numpy_are_equal(
-        get_transform_difference(np.array([[0,-1,0,1],[1,0,0,2],[0,0,1,3],[0,0,0,1]]),
+      	([0,-1,-2],[1,0,0],0)))
+      # convert from rotated pi/2 around z back to origin, means we need to rotate negative pi/2
+      self.assertTrue(tuple_are_equal(
+        get_transform_difference_axis_angle(np.array([[0,-1,0,1],[1,0,0,2],[0,0,1,3],[0,0,0,1]]),
                                  [1,1,1],
                                  [1,0,0,0]),
-      	[0,-1,-2,np.sqrt(0.5),0,0,-np.sqrt(0.5)]))
-      #self.assertTrue(numpy_are_equal(
-      #  get_transform_difference(np.array([[0,-1,0,0],[-1,0,0,0],[0,0,-1,0],[0,0,0,1]]),
-      #                           [0,0,0],
-      #                           [1,0,0,0]),
-      #	[0,0,0,0,0,np.sqrt(0.5),-np.sqrt(0.5)]))
+      	([0,-1,-2],[0,0,-1],np.pi/2)))
+      # convert from current starting position
+      # to starting position rotated so that camera moves between hand and face
+      self.assertTrue(tuple_are_equal(
+        get_transform_difference_axis_angle(np.array([[0,0,1,0],[1,0,0,0],[0,1,0,0],[0,0,0,1]]),
+                                 [0,0,0],
+                                 [np.sqrt(0.5),0,np.sqrt(0.5),0]),
+      	([0,0,0],[-1,0,0],np.pi/2)))
 
-    def test_mult_jacobian_with_direction(self):
-      self.assertTrue(numpy_are_equal(mult_jacobian_with_direction(np.transpose(np.array([[1,0,0,0],[1,0,0,0]])), np.array([1,0,0,0])), np.array([0,0])))
-      self.assertTrue(numpy_are_equal(mult_jacobian_with_direction(np.transpose(np.array([[0.5,0.5,0,0],[1,0,0,0]])), np.array([0.5,0.5,0,0])), np.array([np.pi**2/4.0,0])))
+    def test_multiply_angVelJac_with_quat(self):
+      self.assertTrue(numpy_are_equal(
+        convert_axis_angle_to_joint(np.transpose(np.array([[1,0,0],[1,0,0]])), [1,0,0],0), 
+        np.array([0,0])))
+      self.assertTrue(numpy_are_equal(
+        convert_axis_angle_to_joint(np.transpose(np.array([[np.sqrt(0.5),np.sqrt(0.5),0],[1,0,0]])), [1,0,0], np.pi/2),
+        np.array([np.pi/2 * np.sqrt(0.5),np.pi/2])))
 
 
   unittest.main()

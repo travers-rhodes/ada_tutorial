@@ -5,6 +5,7 @@ import rospy
 import numpy as np
 import time
 import adapy
+import argparse
 
 from ada_tutorial.srv import MoveArm
 from std_msgs.msg import Header
@@ -45,6 +46,10 @@ class Tracker:
     rospy.wait_for_service('move_arm', timeout=None)
     self.move_to_target = rospy.ServiceProxy('move_arm', MoveArm)
     self.move_to_target(target=Point(x_dist, -0.2959789,   0.552686472), constrainMotion=False)
+    # straightup
+    #self.move_to_target(target=Point(0.0, -0.2959789,   0.752686472), constrainMotion=False)
+    # straightdown
+    #self.move_to_target(target=Point(0.0, -0.2959789,   0.352686472), constrainMotion=False)
 
   def follow_mouth(self,timeoutSecs):
     # start tracking the actual mouth
@@ -78,6 +83,11 @@ class Tracker:
     self.move_to_target(target=Point(endLoc[0], endLoc[1], endLoc[2]), constrainMotion=True)
 
 if __name__=="__main__":
+  # parse input arguments
+  parser = argparse.ArgumentParser(description='node to track the position given by a rostopic')
+  parser.add_argument('-s', '--sim', action='store_true',
+                          help='simulation mode')
+  args = parser.parse_args(rospy.myargv()[1:])
   # initialize the ros node 
   rospy.init_node('adapy_tracker', anonymous=True)
   # start tracker running and start following locations
@@ -86,7 +96,8 @@ if __name__=="__main__":
   thread = Thread(target=track.follow_mouth, args = (1,))
   thread.start()
 
-  #rospy.spin()
+  if (not args.sim):
+    rospy.spin()
 
   pub = rospy.Publisher(point_topic, Point, queue_size=10)
   h = Header()
@@ -97,11 +108,12 @@ if __name__=="__main__":
   poses = [[ x_dist, y_center + 0.1 * np.sin(t),z_center + 0.1 * np.cos(t)] for t in times]
 
   for pose in poses+poses+poses:
-    #mesg = tfMessage([TransformStamped(h, "dummy_frame", Transform(Vector3(pose[0], pose[1], pose[2]), None))])
-    print("GOING TO MOVE") 
-    track.move_to_target(target=Point(pose[0], pose[1], pose[2]), constrainMotion=True)
-    print("Service Returned") 
-    rospy.sleep(1)
+    mesg = Point(pose[0], pose[1], pose[2])
+    pub.publish(mesg)
+    #print("GOING TO MOVE") 
+    #track.move_to_target(target=Point(pose[0], pose[1], pose[2]), constrainMotion=True)
+    #print("Service Returned") 
+    rospy.sleep(10)
   thread.join()
 
 

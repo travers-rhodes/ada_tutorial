@@ -4,7 +4,7 @@ import argparse
 import numpy as np
 
 from ada_tutorial.srv import MoveArm, MoveArmResponse
-#from ada_cartesian_control import AdaCartesianControl
+from ada_cartesian_control import AdaCartesianControl
 from ada_jacobian_control import AdaJacobianControl
 
 def main(args):
@@ -16,9 +16,11 @@ def main(args):
 
 class MoveArmService:
   def __init__(self, args):
-    #self.ada_control = AdaCartesianControl(args)
-    self.ada_control = AdaJacobianControl(args)
-
+    if args.useJacobian:
+      rospy.logwarn("Using Jacobian Controller")
+      self.ada_control = AdaJacobianControl(args)
+    else:
+      self.ada_control = AdaCartesianControl(args)
   # takes in a MoveArm request and calls ada_control 
   # to move the arm based on that request
   def handle_move_arm(self, req):
@@ -31,13 +33,16 @@ class MoveArmService:
     except Exception as e:
       rospy.logerr(e)
       isSuccess = False
+      raise
     return MoveArmResponse(isSuccess)
 
 
 if __name__=="__main__":
   # parse input arguments
-  parser = argparse.ArgumentParser(description='node to track the position given by a rostopic')
+  parser = argparse.ArgumentParser(description='service server node to move arm to a given position')
   parser.add_argument('-s', '--sim', action='store_true',
+                          help='simulation mode')
+  parser.add_argument('-j', '--useJacobian', action='store_true',
                           help='simulation mode')
   parser.add_argument('-v', '--viewer', nargs='?', const=True,
                           help='attach a viewer of the specified type')
