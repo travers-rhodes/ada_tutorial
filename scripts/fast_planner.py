@@ -19,7 +19,7 @@ x_dist = 0.41676946
 class CameraCalibration:
   def __init__(self):
     camera_to_camera = np.array([[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]])
-    self.camera_to_robot =  np.array([[1,0,0,0.4],[0,0,1,-0.8],[0,-1,0,0.55],[0,0,0,1]])
+    self.camera_to_robot =  np.array([[1,0,0,0.4],[0,0,1,-0.8],[0,-1,0,0.30],[0,0,0,1]])
     self.br = tf.TransformBroadcaster()
     rospy.logwarn("camera calibration initialized")
     

@@ -27,7 +27,7 @@ class AdaControlBase(object):
     # make the robot go at half speed
     vel_limits = self.robot.GetDOFVelocityLimits()
     self.robot.SetDOFVelocityLimits(vel_limits * 0.5)
-    self.manip = self.robot.SetActiveManipulator("Mico")
+    self.manip = self.robot.SetActiveManipulator("Spoon")
     self.manip_rob = openravepy.interfaces.BaseManipulation(self.robot) # create the interface for basic manipulation programs
 
     self.rot = self.generate_target_rotmat()
@@ -35,8 +35,10 @@ class AdaControlBase(object):
     
     # even though it's not obvious how we use this, we need to initialize the IKModel on self.robot
     ikmodel = openravepy.databases.inversekinematics.InverseKinematicsModel(self.robot,iktype=openravepy.IkParameterization.Type.Transform6D)
+    #ikmodel.autogenerate()
     try:
       # ideally this would return 0 instead of erroring if it fails, but for now a try-catch will do the trick
+      # actually, a try-catch doesn't help. just run autogenerate whenever you change the robot
       ikmodel.load()
     except:
       ikmodel.autogenerate()

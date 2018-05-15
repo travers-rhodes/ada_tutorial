@@ -24,9 +24,9 @@ class AdaJacobianControl(AdaControlBase):
     super(AdaJacobianControl, self).__init__(args)
     # see also plug_in_cartesian_control in ada_cartesian_control
     self.move_to_target_by_planner = types.MethodType(ada_cartesian_control.move_to_target, self)
-    arm_indices = self.manip.GetArmIndices()
-    self.robot.SetActiveDOFs(arm_indices)
-    self.joint_min, self.joint_max = self.robot.GetDOFLimits(arm_indices)
+    self.arm_indices = self.manip.GetArmIndices()
+    self.robot.SetActiveDOFs(self.arm_indices)
+    self.joint_min, self.joint_max = self.robot.GetDOFLimits(self.arm_indices)
 
   # endLoc must be a length 3 np.array
   # if constrainMotion is set to False, don't allow the robot end effector to rotate, and only allow linear motion toward the goal
@@ -47,7 +47,7 @@ class AdaJacobianControl(AdaControlBase):
       diffTrans, diffRotAxis, diffRotAngle = th.get_transform_difference_axis_angle(curtrans, endLoc, self.quat)
       jac= self.manip.CalculateJacobian()
       angVelJac = self.manip.CalculateAngularVelocityJacobian()
-      curLoc = self.manip.GetDOFValues()
+      curLoc = self.robot.GetDOFValues(self.arm_indices)
       jacobianTranspose = False
       if jacobianTranspose:
         # get the joint change needed in direction of desired translation
@@ -56,7 +56,7 @@ class AdaJacobianControl(AdaControlBase):
         nextRotDiff = th.convert_axis_angle_to_joint(angVelJac, diffRotAxis, diffRotAngle)
         step = get_step(nextTransDiff, nextRotDiff)
       else:
-        step = th.least_squares_step(jac, angVelJac, diffTrans, diffRotAxis * diffRotAngle) * 0.3
+        step = th.least_squares_step(jac, angVelJac, diffTrans, diffRotAxis * diffRotAngle) * 0.1
         desMaxChange = 0.4
         curMaxChange = max(abs(step))
         if curMaxChange > desMaxChange:
@@ -81,7 +81,7 @@ class AdaJacobianControl(AdaControlBase):
     # manipulator has 6DOF, but we also need to specify the finger DOFs, apparently
     # so we get the full DOFs here by concatenating on two extra DOFs
     extraDOFValues = []
-    curLoc = self.manip.GetDOFValues()
+    curLoc = self.robot.GetDOFValues(self.arm_indices)
     #rospy.logwarn("curFullLoc is %s"%curLoc)
     traj = openravepy.RaveCreateTrajectory(self.env,'')
     traj.Init(self.robot.GetActiveConfigurationSpecification())
