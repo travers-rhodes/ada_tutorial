@@ -39,6 +39,9 @@ class AdaJacobianControl(AdaControlBase):
     return th.distance(curLoc, endLoc) > 0.4
 
   def make_step_to_target(self, endLoc, constrainMotion):
+    stepSize = 0.02
+    if self.is_close_enough_to_target(endLoc, epsilon=stepSize):
+      return
     with self.env:
       curtrans = self.manip.GetEndEffectorTransform()
       diffTrans, diffRotAxis, diffRotAngle = th.get_transform_difference_axis_angle(curtrans, endLoc, self.quat)

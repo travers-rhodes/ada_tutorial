@@ -1,4 +1,5 @@
 import numpy as np
+#from scipy.optimize import lsq_linear
 import transforms3d as t3d
 
 # given two 3d points curLoc and endLoc
@@ -91,12 +92,14 @@ def convert_axis_angle_to_joint(angleAxesJoints, rotAxis, rotAngle):
 # ** angVelJac: the list of axes in base frame coordinates around which each joint rotates (3xjoints)
 # ** diffTrans: the desired translation of the end-effector in base coords
 # ** diffAngular: the desired rotation of the end-effector (unit axis times rotation angle) 
-def least_squares_step(jac, angVelJac, diffTrans, diffAngular):
+def least_squares_step(jac, angVelJac, diffTrans, diffAngular, minConstraint=-np.inf, maxConstraint=np.inf):
   combinedJacs = np.concatenate((jac, angVelJac))
   #print(combinedJacs)
   combinedGoal = np.concatenate((diffTrans, diffAngular))
   #print(combinedGoal)
+  #joints = lsq_linear(combinedJacs, combinedGoal,bounds=(minConstraint, maxConstraint))
   joints = np.linalg.lstsq(combinedJacs, combinedGoal)[0]
+  #print(joints.success)
   #print(joints)
   return(joints)
   
@@ -124,6 +127,10 @@ if __name__=="__main__":
                                       [1,1]))
       self.assertTrue(numpy_are_equal(least_squares_step([[-1,0],[0,1],[0,0]], [[-1,0],[0,1],[0,0]],[1,1,0],[1,1,0]),
                                       [-1,1]))
+      self.assertTrue(numpy_are_equal(least_squares_step([[-1,0],[0,1],[0,0]], [[-1,0],[0,1],[0,0]],[1,1,0],[1,1,0], [0,0], [np.inf, np.inf]),
+                                      [0,1]))
+      self.assertTrue(numpy_are_equal(least_squares_step([[-1,0],[0,1],[0,0]], [[-1,0],[0,1],[0,0]],[1,1,0],[1,1,0], [-np.inf, -np.inf], [np.inf,0.5]),
+                                      [-1,0.5]))
 
     def test_get_motion_frame_matrix(self):
       self.assertTrue(numpy_are_equal(get_motion_frame_matrix(np.array([[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]]),np.array([1,0,0])), 
