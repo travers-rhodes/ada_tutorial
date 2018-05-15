@@ -26,7 +26,8 @@ class TrackArmService:
           self.ada_control.make_step_to_target(self.target, constrainMotion=False)
       except Exception as e:
         rospy.logerr(e)
-        raise
+        # we don't want this service to ever actually throw errors and fail out
+        #raise
       # We don't need special code to allow any callbacks to run, in case the user has updated the location
       # since in rospy, callbacks are always called in separate threads 
 

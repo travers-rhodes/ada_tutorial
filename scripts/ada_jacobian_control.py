@@ -26,6 +26,7 @@ class AdaJacobianControl(AdaControlBase):
     self.move_to_target_by_planner = types.MethodType(ada_cartesian_control.move_to_target, self)
     arm_indices = self.manip.GetArmIndices()
     self.robot.SetActiveDOFs(arm_indices)
+    self.joint_min, self.joint_max = self.robot.GetDOFLimits(arm_indices)
 
   # endLoc must be a length 3 np.array
   # if constrainMotion is set to False, don't allow the robot end effector to rotate, and only allow linear motion toward the goal
@@ -52,11 +53,16 @@ class AdaJacobianControl(AdaControlBase):
         nextRotDiff = th.convert_axis_angle_to_joint(angVelJac, diffRotAxis, diffRotAngle)
         step = get_step(nextTransDiff, nextRotDiff)
       else:
-        step = th.least_squares_step(jac, angVelJac, diffTrans, diffRotAxis * diffRotAngle) * 0.1
-        desMaxChange = 0.1
+        step = th.least_squares_step(jac, angVelJac, diffTrans, diffRotAxis * diffRotAngle) * 0.3
+        desMaxChange = 0.4
         curMaxChange = max(abs(step))
         if curMaxChange > desMaxChange:
+          rospy.logwarn("one of the joints was going too fast, so slowing motion")
           step = step*desMaxChange/curMaxChange
+        if (np.any((curLoc + step) < self.joint_min) or 
+           np.any((curLoc + step) > self.joint_max)):
+          rospy.logwarn("The joint limits would have been exceeded, so not taking any step. Requested joints: %s, Joint minimum bounds: %s, Joint maximum bounds %s"%(curLoc + step, self.joint_min, self.joint_max))
+          return
       traj = self.create_two_point_trajectory(curLoc + step)
       if constrainMotion:
         pass
