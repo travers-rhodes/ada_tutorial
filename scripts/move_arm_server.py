@@ -20,7 +20,7 @@ class MoveArmService:
       rospy.logwarn("Using Jacobian Controller")
       self.ada_control = AdaJacobianControl(args)
     else:
-      self.ada_control = AdaCartesianControl(args)
+      self.ada_control = AdaCartesianControl(args, endEffName="Mico")
 
   # takes in a MoveArm request and calls ada_control 
   # to move the arm based on that request
@@ -34,7 +34,7 @@ class MoveArmService:
     except Exception as e:
       rospy.logerr(e)
       isSuccess = False
-      raise
+      #raise
     return MoveArmResponse(isSuccess)
 
 if __name__=="__main__":

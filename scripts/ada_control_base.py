@@ -16,7 +16,7 @@ from std_msgs.msg import Header
 from geometry_msgs.msg import Point
 
 class AdaControlBase(object):
-  def __init__(self, args): 
+  def __init__(self, args, endEffName="Mico"): 
     openravepy.RaveInitialize(True)
     openravepy.misc.InitOpenRAVELogging()
     self.env, self.robot = adapy.initialize(
@@ -27,7 +27,7 @@ class AdaControlBase(object):
     # make the robot go at half speed
     vel_limits = self.robot.GetDOFVelocityLimits()
     self.robot.SetDOFVelocityLimits(vel_limits * 0.5)
-    self.manip = self.robot.SetActiveManipulator("Spoon")
+    self.manip = self.robot.SetActiveManipulator(endEffName)
     self.manip_rob = openravepy.interfaces.BaseManipulation(self.robot) # create the interface for basic manipulation programs
 
     self.rot = self.generate_target_rotmat()

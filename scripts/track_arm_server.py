@@ -16,7 +16,7 @@ def main(args):
 
 class TrackArmService:
   def __init__(self, args):
-    self.ada_control = AdaJacobianControl(args)
+    self.ada_control = AdaJacobianControl(args,endEffName="Spoon")
     self.target = None
 
   def RunTracking(self):

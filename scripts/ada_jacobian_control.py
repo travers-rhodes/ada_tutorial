@@ -20,8 +20,8 @@ def get_step(nextTransDiff, nextRotDiff):
   return nextDiff
  
 class AdaJacobianControl(AdaControlBase):
-  def __init__(self, args): 
-    super(AdaJacobianControl, self).__init__(args)
+  def __init__(self, args, endEffName="Spoon"): 
+    super(AdaJacobianControl, self).__init__(args, endEffName)
     # see also plug_in_cartesian_control in ada_cartesian_control
     self.move_to_target_by_planner = types.MethodType(ada_cartesian_control.move_to_target, self)
     self.arm_indices = self.manip.GetArmIndices()
@@ -36,7 +36,7 @@ class AdaJacobianControl(AdaControlBase):
       self.make_step_to_target(endLoc, constrainMotion)
 
   def should_perform_planned_move(self, curLoc, endLoc):
-    return th.distance(curLoc, endLoc) > 0.4
+    return th.distance(curLoc, endLoc) > 0.8
 
   def make_step_to_target(self, endLoc, constrainMotion):
     stepSize = 0.02
@@ -72,7 +72,7 @@ class AdaJacobianControl(AdaControlBase):
      
     if self.should_perform_planned_move(curtrans[0:3,3], endLoc):
       rospy.logwarn("The target location was too far away, so we're using the slower planner to get there")
-      self.move_to_target_by_planner(endLoc) 
+      self.move_to_target_by_planner(endLoc, constrainMotion=True) 
     else:
       #rospy.logwarn(traj) 
       self.robot.ExecuteTrajectory(traj)
