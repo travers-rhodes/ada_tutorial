@@ -20,6 +20,8 @@ class TrackArmService:
     self.target = None
 
   def RunTracking(self):
+    # keep this loop from going faster than a fixed amount by means of rospy.rate
+    r = rospy.Rate(10) # 10hz
     while not rospy.is_shutdown():
       try:
         if self.target is not None:
@@ -30,6 +32,8 @@ class TrackArmService:
         #raise
       # We don't need special code to allow any callbacks to run, in case the user has updated the location
       # since in rospy, callbacks are always called in separate threads 
+      # however, since sometimes the loop is a no-op, we add a sleep to keep it from going faster than 10hz
+      r.sleep()
 
   # takes in a MoveArm request and calls ada_control 
   # to move the arm based on that request
