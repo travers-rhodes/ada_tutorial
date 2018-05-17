@@ -12,8 +12,10 @@ import transforms3d as t3d
 
 import transform_helpers as th
 
-from std_msgs.msg import Header
+from std_msgs.msg import Header, Float64
 from geometry_msgs.msg import Point
+
+distance_to_goal_topic = "/distance_to_goal" # std_msgs/Float64
 
 class AdaControlBase(object):
   def __init__(self, args, endEffName="Mico"): 
@@ -42,6 +44,8 @@ class AdaControlBase(object):
       ikmodel.load()
     except:
       ikmodel.autogenerate()
+
+    self.dist_to_goal_publisher = rospy.Publisher(distance_to_goal_topic, Float64, queue_size=10)
 
   # generate the rotation matrix corresponding to the desired end-effector rotation
   # this multiplying this rotmat times points written in the end-effector frame

@@ -11,7 +11,7 @@ def main(args):
   rospy.init_node('track_arm_server', anonymous=True)
   tas = TrackArmService(args)
   s = rospy.Service('update_track_target', MoveArm, tas.handle_target_update)
-  tas.RunTracking()
+  tas.run_tracking()
   rospy.spin() 
 
 class TrackArmService:
@@ -19,7 +19,7 @@ class TrackArmService:
     self.ada_control = AdaJacobianControl(args,endEffName="Spoon")
     self.target = None
 
-  def RunTracking(self):
+  def run_tracking(self):
     # keep this loop from going faster than a fixed amount by means of rospy.rate
     r = rospy.Rate(10) # 10hz
     while not rospy.is_shutdown():
@@ -42,6 +42,9 @@ class TrackArmService:
     # of the coordinates to move the end-effector of the arm to in
     # cartesian coordinates relative to the base frame of the arm
     isSuccess = True
+    if req.stopMotion:
+      self.target = None
+      return MoveArmResponse(isSuccess)
     self.target = [req.target.x, req.target.y, req.target.z]
     return MoveArmResponse(isSuccess)
 

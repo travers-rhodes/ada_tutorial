@@ -7,14 +7,12 @@ import time
 import adapy
 import argparse
 import tf
-from enum import Enum
 
 from ada_tutorial.srv import MoveArm
 from std_msgs.msg import Header
 from geometry_msgs.msg import Point, PointStamped
 
 point_topic = "/DO/inferenceOut/Point"
-point_stamped_topic = point_topic + "Stamped"
 
 class CameraCalibration:
   def __init__(self):
@@ -52,11 +50,10 @@ class CameraCalibration:
   def convert_to_robot_frame(self, point):
     return self.camera_to_robot.dot(point.transpose())
 
-class Tracker:
+class TrackerInterface:
   def __init__(self):
     self.cameraCalib = CameraCalibration()
     rospy.wait_for_service('update_track_target', timeout=None)
-    self.pubStamped = rospy.Publisher(point_stamped_topic, PointStamped, queue_size=10)
     self._update_target = rospy.ServiceProxy('update_track_target', MoveArm)
     self.target_listener = None
 
@@ -74,7 +71,7 @@ class Tracker:
 
   def stop_moving(self):
     self._stop_updating_target()
-    self._update_target(target=None, constrainMotion=False)
+    self._update_target(stopMotion=True)
 
 
   #### PRIVATE METHODS #####
@@ -92,12 +89,6 @@ class Tracker:
 
   # compute and move toward the target mouth location
   # only move for at most timeoutSecs,   
-  # if constrainMotion is set to False, don't allow the robot end effector to rotate, and only allow linear motion toward the goal
-  # otherwise, don't constrain motion
   def _update_target_camera_frame(self, mouth_pos, robot_coord_offset = [0,0,0]):
     endLoc = self._convert_camera_to_robot_frame(mouth_pos) + np.array(robot_coord_offset)
-    h = Header()
-    h.stamp = rospy.Time.now()
-    h.frame_id = "camera_rgb_optical_frame"
-    self.pubStamped.publish(PointStamped(h,mouth_pos))
     self._update_target(target=Point(endLoc[0], endLoc[1], endLoc[2]), constrainMotion=True)

@@ -7,6 +7,8 @@ import numpy as np
 import openravepy
 import types
 
+from std_msgs.msg import Float64
+
 import transform_helpers as th
 from ada_control_base import AdaControlBase
 import ada_cartesian_control
@@ -15,8 +17,8 @@ def get_step(nextTransDiff, nextRotDiff):
   rotStepAlpha = 0.1
   transStepAlpha = 1 
   nextDiff = rotStepAlpha * nextRotDiff + transStepAlpha * nextTransDiff
-  rospy.logwarn("so, we want to update our joint angles to change by %s" % nextDiff)
-  rospy.logwarn("moving in direction %s"%nextDiff)
+  #rospy.logwarn("so, we want to update our joint angles to change by %s" % nextDiff)
+  #rospy.logwarn("moving in direction %s"%nextDiff)
   return nextDiff
  
 class AdaJacobianControl(AdaControlBase):
@@ -36,12 +38,40 @@ class AdaJacobianControl(AdaControlBase):
       self.make_step_to_target(endLoc, constrainMotion)
 
   def should_perform_planned_move(self, curLoc, endLoc):
-    return th.distance(curLoc, endLoc) > 0.8
+    return th.distance(curLoc, endLoc) > 1
+  
+  def get_pseudo_endLoc(self, curCartLoc, endLoc):
+    rospy.logwarn("CURRENT POSITION is %s" % curCartLoc)
+    breaks = [-0.15, -0.07, 0, 0.07]
+    pseudoEndLoc = np.array(endLoc)
+    for i in range(3):
+      if curCartLoc[1] < breaks[i] and endLoc[1] > breaks[i+1]:
+        pseudoEndLoc[1] = (breaks[i+1] + breaks[i])/2.0
+        if endLoc[1] - curCartLoc[1] > 0.15:
+          pseudoEndLoc[0] = endLoc[0] + 0.1
+        return pseudoEndLoc
+      if curCartLoc[1] > breaks[i+1] and endLoc[1] < breaks[i]:
+        pseudoEndLoc[1] = (breaks[i+1] + breaks[i])/2.0
+        pseudoEndLoc[0] = endLoc[0] + 0.1
+        return pseudoEndLoc
+    rospy.logwarn("pseudoEndLoc is %s"% pseudoEndLoc)
+    return pseudoEndLoc
 
   def make_step_to_target(self, endLoc, constrainMotion):
     stepSize = 0.02
+    # don't do anything if close enough to target
     if self.is_close_enough_to_target(endLoc, epsilon=stepSize):
       return
+    curtrans = self.manip.GetEndEffectorTransform()
+    curCartLoc = curtrans[0:3,3]
+    pseudoEndLoc = self.get_pseudo_endLoc(curCartLoc, endLoc)
+    self.make_step_to_pseudotarget(pseudoEndLoc, constrainMotion, stepSize)
+    curtrans = self.manip.GetEndEffectorTransform()
+    curCartLoc = curtrans[0:3,3]
+    delta = th.distance(curCartLoc, endLoc)
+    self.dist_to_goal_publisher.publish(Float64(delta))
+ 
+  def make_step_to_pseudotarget(self, endLoc, constrainMotion, stepSize):
     with self.env:
       curtrans = self.manip.GetEndEffectorTransform()
       diffTrans, diffRotAxis, diffRotAngle = th.get_transform_difference_axis_angle(curtrans, endLoc, self.quat)
@@ -72,7 +102,7 @@ class AdaJacobianControl(AdaControlBase):
      
     if self.should_perform_planned_move(curtrans[0:3,3], endLoc):
       rospy.logwarn("The target location was too far away, so we're using the slower planner to get there")
-      self.move_to_target_by_planner(endLoc, constrainMotion=True) 
+      self.move_to_target_by_planner(endLoc, constrainMotion=False) 
     else:
       #rospy.logwarn(traj) 
       self.robot.ExecuteTrajectory(traj)

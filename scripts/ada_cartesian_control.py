@@ -45,13 +45,13 @@ def move_to_target(self, endLoc, constrainMotion=False):
   self.robot.WaitForController(0)
   rospy.logwarn("Trajectory should be done now")
   curtrans = self.manip.GetEndEffectorTransform()
-  rospy.logwarn("curtrans is %s"%curtrans)
+  #rospy.logwarn("curtrans is %s"%curtrans)
   curquat = t3d.quaternions.mat2quat(curtrans[0:3,:][:,0:3])
-  rospy.logwarn("curquat is %s"%curquat)
+  #rospy.logwarn("curquat is %s"%curquat)
   rotjac = self.manip.CalculateRotationJacobian()
-  rospy.logwarn("rotjac is %s"%rotjac)
+  #rospy.logwarn("rotjac is %s"%rotjac)
   angVeljac = self.manip.CalculateAngularVelocityJacobian()
-  rospy.logwarn("angVelJac is %s"%angVeljac)
+  #rospy.logwarn("angVelJac is %s"%angVeljac)
 
 class AdaCartesianControl(AdaControlBase):
   def __init__(self, args, endEffName = "Mico"):
