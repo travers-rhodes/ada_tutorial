@@ -30,6 +30,7 @@ class MoveArmService:
     # cartesian coordinates relative to the base frame of the arm
     isSuccess = True
     try:
+      rospy.logwarn("Constrain motion is %s"%req.constrainMotion)
       self.ada_control.move_to_target(endLoc=np.array([req.target.x, req.target.y, req.target.z]), constrainMotion=req.constrainMotion)
     except Exception as e:
       rospy.logerr(e)
