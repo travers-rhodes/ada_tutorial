@@ -85,7 +85,7 @@ class AdaJacobianControl(AdaControlBase):
         nextRotDiff = th.convert_axis_angle_to_joint(angVelJac, diffRotAxis, diffRotAngle)
         step = get_step(nextTransDiff, nextRotDiff)
       else:
-        step = th.least_squares_step(jac, angVelJac, diffTrans, diffRotAxis * diffRotAngle) * 0.1
+        step = th.least_squares_step(jac, angVelJac, diffTrans, diffRotAxis * diffRotAngle) * 0.4
         desMaxChange = 0.4
         curMaxChange = max(abs(step))
         if curMaxChange > desMaxChange:
