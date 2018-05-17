@@ -3,14 +3,14 @@ import rospy
 import argparse
 import numpy as np
 
-from ada_tutorial.srv import MoveArm, MoveArmResponse
+from ada_tutorial.srv import TrackArm, TrackArmResponse
 from ada_jacobian_control import AdaJacobianControl
 
 def main(args):
   # initialize the ros node 
   rospy.init_node('track_arm_server', anonymous=True)
   tas = TrackArmService(args)
-  s = rospy.Service('update_track_target', MoveArm, tas.handle_target_update)
+  s = rospy.Service('update_track_target', TrackArm, tas.handle_target_update)
   tas.run_tracking()
   rospy.spin() 
 
@@ -35,7 +35,7 @@ class TrackArmService:
       # however, since sometimes the loop is a no-op, we add a sleep to keep it from going faster than 10hz
       r.sleep()
 
-  # takes in a MoveArm request and calls ada_control 
+  # takes in a TrackArm request and calls ada_control 
   # to move the arm based on that request
   def handle_target_update(self, req):
     # move_to_target's endLoc should be a length 3 np.array
@@ -44,9 +44,9 @@ class TrackArmService:
     isSuccess = True
     if req.stopMotion:
       self.target = None
-      return MoveArmResponse(isSuccess)
+      return TrackArmResponse(isSuccess)
     self.target = [req.target.x, req.target.y, req.target.z]
-    return MoveArmResponse(isSuccess)
+    return TrackArmResponse(isSuccess)
 
 if __name__=="__main__":
   # parse input arguments

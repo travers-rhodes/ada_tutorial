@@ -42,18 +42,17 @@ class AdaJacobianControl(AdaControlBase):
   
   def get_pseudo_endLoc(self, curCartLoc, endLoc):
     rospy.logwarn("CURRENT POSITION is %s" % curCartLoc)
-    breaks = [-0.15, -0.07, 0, 0.07]
+    breaks = [-0.15, -0.07, 0, 0.07, 0.15]
+    lenMinusOne = len(breaks) - 1
     pseudoEndLoc = np.array(endLoc)
-    for i in range(3):
+    for i in range(lenMinusOne):
       if curCartLoc[1] < breaks[i] and endLoc[1] > breaks[i+1]:
         pseudoEndLoc[1] = (breaks[i+1] + breaks[i])/2.0
         if endLoc[1] - curCartLoc[1] > 0.15:
           pseudoEndLoc[0] = endLoc[0] + 0.1
-        return pseudoEndLoc
-      if curCartLoc[1] > breaks[i+1] and endLoc[1] < breaks[i]:
+      elif curCartLoc[1] > breaks[i+1] and endLoc[1] < breaks[i]:
         pseudoEndLoc[1] = (breaks[i+1] + breaks[i])/2.0
-        pseudoEndLoc[0] = endLoc[0] + 0.1
-        return pseudoEndLoc
+        pseudoEndLoc[0] = endLoc[0] + 0.2
     rospy.logwarn("pseudoEndLoc is %s"% pseudoEndLoc)
     return pseudoEndLoc
 
