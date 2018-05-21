@@ -38,18 +38,21 @@ class EmptyStateTransitionLogic(TransitionLogic):
 class PickUpStateTransitionLogic(TransitionLogic):
   def wait_and_return_next_state(self):
     rospy.logwarn("Picking up food")
-    rospy.sleep(1)
+    rospy.sleep(20)
     return State.WAIT_FULL
 
 class WaitFullStateTransitionLogic(TransitionLogic):
   def __init__(self):
     self.ready_for_bite = False
+    rospy.logwarn("Subscribing to a random topic")
     self.listenForReady = rospy.Subscriber(head_not_moving_topic, Bool, self.update_head_ready)
+    rospy.logwarn("Done subscribing to a random topic")
 
   def __exit__(self, exc_type, exc_value, traceback):
     self.listenForReady.unregister()
 
   def wait_and_return_next_state(self):
+    rospy.logwarn("Sleeping for one second")
     rospy.sleep(1) #temporary hack just wait a second then go
     return State.MOVE_TO_MOUTH
     

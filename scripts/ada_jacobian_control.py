@@ -5,41 +5,93 @@ Use gradient descent to move the hand to the cartesian target
 import rospy
 import numpy as np
 import openravepy
-import types
 
-from std_msgs.msg import Float64
+import adapy
 
 import transform_helpers as th
-from ada_control_base import AdaControlBase
-import ada_cartesian_control
-
-def get_step(nextTransDiff, nextRotDiff):
-  rotStepAlpha = 0.1
-  transStepAlpha = 1 
-  nextDiff = rotStepAlpha * nextRotDiff + transStepAlpha * nextTransDiff
-  #rospy.logwarn("so, we want to update our joint angles to change by %s" % nextDiff)
-  #rospy.logwarn("moving in direction %s"%nextDiff)
-  return nextDiff
+import transforms3d as t3d
  
-class AdaJacobianControl(AdaControlBase):
+class AdaJacobianControl():
   def __init__(self, args, endEffName="Spoon"): 
-    super(AdaJacobianControl, self).__init__(args, endEffName)
-    # see also plug_in_cartesian_control in ada_cartesian_control
-    self.move_to_target_by_planner = types.MethodType(ada_cartesian_control.move_to_target, self)
+    ###
+    ### CONSTANTS that we might turn into parameters later
+    ###
+    # what is the fraction of the max speed we allow motors to go
+    self.velocity_fraction = 1
+    # what fraction of the distance to the goal do we travel on each step
+    self.step_fraction = 0.1
+    # what is the largest number of radians we allow a motor to rotate in each linear step
+    self.max_rotation_per_step = 0.4
+    ###
+    ### Initialize robot
+    ###
+    self.initialize_robot(args, endEffName)
+    
+  def initialize_robot(self, args, endEffName):
+    openravepy.RaveInitialize(True)
+    openravepy.misc.InitOpenRAVELogging()
+    self.env, self.robot = adapy.initialize(
+        sim=args.sim,
+        attach_viewer=args.viewer,
+        env_path=args.env_xml
+    )
+    self.manip = self.robot.SetActiveManipulator(endEffName)
+    # even though it's not obvious how we use this, we need to initialize the IKModel on self.robot
+    ikmodel = openravepy.databases.inversekinematics.InverseKinematicsModel(self.robot,iktype=openravepy.IkParameterization.Type.Transform6D)
+    #ikmodel.autogenerate()
+    ikmodel.load()
+    vel_limits = self.robot.GetDOFVelocityLimits()
+    self.robot.SetDOFVelocityLimits(vel_limits * self.velocity_fraction)
     self.arm_indices = self.manip.GetArmIndices()
     self.robot.SetActiveDOFs(self.arm_indices)
     self.joint_min, self.joint_max = self.robot.GetDOFLimits(self.arm_indices)
+ 
+  # if we aren't already at target, pick a pseudo target on the way to the target
+  # and head to that pseudo target 
+  def make_step_to_target_pose(self, endPose):
+    endLoc = np.array([endPose.position.x,
+                       endPose.position.y,
+                       endPose.position.z])
+    endQuat = np.array([endPose.orientation.w, 
+                        endPose.orientation.x, 
+                        endPose.orientation.y, 
+                        endPose.orientation.z])
+    transEpsilon = 0.02
+    quatEpsilon = 0.0002 
+    curtrans = self.manip.GetEndEffectorTransform()
+    curCartLoc = curtrans[0:3,3]
+    quat_dist = th.quat_distance(t3d.quaternions.mat2quat(curtrans[0:3,0:3]), endQuat)
+    rospy.logwarn("quat_dist is %s"%quat_dist)
+    # don't do anything if close enough to target
+    if (th.distance(curCartLoc, endLoc) < transEpsilon and
+       # quat_distance is between 0 and 1
+       quat_dist < quatEpsilon):
+      return
+    pseudoEndLoc = self.get_pseudo_endLoc(curCartLoc, endLoc)
+    self.make_step_to_pseudotarget(pseudoEndLoc, endQuat)
+ 
+  def make_step_to_pseudotarget(self, endLoc, endQuat):
+    with self.env:
+      curtrans = self.manip.GetEndEffectorTransform()
+      diffTrans, diffRotAxis, diffRotAngle = th.get_transform_difference_axis_angle(curtrans, endLoc, endQuat)
+      jac= self.manip.CalculateJacobian()
+      angVelJac = self.manip.CalculateAngularVelocityJacobian()
+      curLoc = self.robot.GetDOFValues(self.arm_indices)
+      step = th.least_squares_step(jac, angVelJac, diffTrans, diffRotAxis * diffRotAngle) * self.step_fraction
+      desMaxChange = self.max_rotation_per_step
+      curMaxChange = max(abs(step))
+      if curMaxChange > desMaxChange:
+        rospy.logwarn("one of the joints was going too fast, so slowing motion")
+        step = step*desMaxChange/curMaxChange
+      if (np.any((curLoc + step) < self.joint_min) or 
+          np.any((curLoc + step) > self.joint_max)):
+        rospy.logwarn("The joint limits would have been exceeded, so not taking any step. Requested joints: %s, Joint minimum bounds: %s, Joint maximum bounds %s"%(curLoc + step, self.joint_min, self.joint_max))
+        return
+      traj = self.create_two_point_trajectory(curLoc + step)
+    self.robot.ExecuteTrajectory(traj)
 
-  # endLoc must be a length 3 np.array
-  # if constrainMotion is set to False, don't allow the robot end effector to rotate, and only allow linear motion toward the goal
-  # otherwise, don't constrain motion
-  def move_to_target(self, endLoc, constrainMotion=False):
-    while not self.is_close_enough_to_target(endLoc, epsilon=0.02):
-      self.make_step_to_target(endLoc, constrainMotion)
-
-  def should_perform_planned_move(self, curLoc, endLoc):
-    return th.distance(curLoc, endLoc) > 1
-  
+  # todo: clean this up. But in general, if you're moving large distances in y,
+  # then you should stay away from the pivot point (increase your x) 
   def get_pseudo_endLoc(self, curCartLoc, endLoc):
     rospy.logwarn("CURRENT POSITION is %s" % curCartLoc)
     breaks = [-0.15, -0.07, 0, 0.07, 0.15]
@@ -56,66 +108,11 @@ class AdaJacobianControl(AdaControlBase):
     rospy.logwarn("pseudoEndLoc is %s"% pseudoEndLoc)
     return pseudoEndLoc
 
-  def make_step_to_target(self, endLoc, constrainMotion):
-    stepSize = 0.02
-    # don't do anything if close enough to target
-    if self.is_close_enough_to_target(endLoc, epsilon=stepSize):
-      return
-    curtrans = self.manip.GetEndEffectorTransform()
-    curCartLoc = curtrans[0:3,3]
-    pseudoEndLoc = self.get_pseudo_endLoc(curCartLoc, endLoc)
-    self.make_step_to_pseudotarget(pseudoEndLoc, constrainMotion, stepSize)
-    curtrans = self.manip.GetEndEffectorTransform()
-    curCartLoc = curtrans[0:3,3]
-    delta = th.distance(curCartLoc, endLoc)
-    self.dist_to_goal_publisher.publish(Float64(delta))
- 
-  def make_step_to_pseudotarget(self, endLoc, constrainMotion, stepSize):
-    with self.env:
-      curtrans = self.manip.GetEndEffectorTransform()
-      diffTrans, diffRotAxis, diffRotAngle = th.get_transform_difference_axis_angle(curtrans, endLoc, self.quat)
-      jac= self.manip.CalculateJacobian()
-      angVelJac = self.manip.CalculateAngularVelocityJacobian()
-      curLoc = self.robot.GetDOFValues(self.arm_indices)
-      jacobianTranspose = False
-      if jacobianTranspose:
-        # get the joint change needed in direction of desired translation
-        nextTransDiff = np.transpose(jac).dot(diffTrans) 
-        # get the joint change needed in direction of desired rotation
-        nextRotDiff = th.convert_axis_angle_to_joint(angVelJac, diffRotAxis, diffRotAngle)
-        step = get_step(nextTransDiff, nextRotDiff)
-      else:
-        step = th.least_squares_step(jac, angVelJac, diffTrans, diffRotAxis * diffRotAngle) * 0.4
-        desMaxChange = 0.4
-        curMaxChange = max(abs(step))
-        if curMaxChange > desMaxChange:
-          rospy.logwarn("one of the joints was going too fast, so slowing motion")
-          step = step*desMaxChange/curMaxChange
-        if (np.any((curLoc + step) < self.joint_min) or 
-           np.any((curLoc + step) > self.joint_max)):
-          rospy.logwarn("The joint limits would have been exceeded, so not taking any step. Requested joints: %s, Joint minimum bounds: %s, Joint maximum bounds %s"%(curLoc + step, self.joint_min, self.joint_max))
-          return
-      traj = self.create_two_point_trajectory(curLoc + step)
-      if constrainMotion:
-        pass
-     
-    if self.should_perform_planned_move(curtrans[0:3,3], endLoc):
-      rospy.logwarn("The target location was too far away, so we're using the slower planner to get there")
-      self.move_to_target_by_planner(endLoc, constrainMotion=False) 
-    else:
-      #rospy.logwarn(traj) 
-      self.robot.ExecuteTrajectory(traj)
-
   def create_two_point_trajectory(self,goal_joint_values):
-    # manipulator has 6DOF, but we also need to specify the finger DOFs, apparently
-    # so we get the full DOFs here by concatenating on two extra DOFs
-    extraDOFValues = []
     curLoc = self.robot.GetDOFValues(self.arm_indices)
-    #rospy.logwarn("curFullLoc is %s"%curLoc)
     traj = openravepy.RaveCreateTrajectory(self.env,'')
     traj.Init(self.robot.GetActiveConfigurationSpecification())
-    traj.Insert(0,np.concatenate((curLoc, extraDOFValues)))
-    traj.Insert(1,np.concatenate((goal_joint_values, extraDOFValues)))
+    traj.Insert(0,curLoc)
+    traj.Insert(1,goal_joint_values)
     openravepy.planningutils.RetimeActiveDOFTrajectory(traj,self.robot)#,hastimestamps=False,maxvelmult=1,plannername='ParabolicTrajectoryRetimer')
-
     return traj

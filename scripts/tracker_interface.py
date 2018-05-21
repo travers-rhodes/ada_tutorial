@@ -10,11 +10,10 @@ import tf
 import yaml
 import rospkg
 
-from ada_tutorial.srv import TrackArm
+from ada_tutorial.srv import TrackPose
 from std_msgs.msg import Header
-from geometry_msgs.msg import Point, PointStamped
+from geometry_msgs.msg import Pose, Point, Quaternion 
 
-point_topic = "/DO/inferenceOut/Point"
 
 class CameraCalibration:
   def __init__(self):
@@ -65,23 +64,29 @@ class CameraCalibration:
     return self.camera_to_robot.dot(point.transpose())
 
 class TrackerInterface:
-  def __init__(self):
+  def __init__(self, defaultQuat):
     self.cameraCalib = CameraCalibration()
-    rospy.wait_for_service('update_track_target', timeout=None)
-    self._update_target = rospy.ServiceProxy('update_track_target', TrackArm)
-    self.target_listener = None
+    rospy.wait_for_service('update_pose_target', timeout=None)
+    self._update_target = rospy.ServiceProxy('update_pose_target', TrackPose)
+    self.pose_target_listener = None
+    self.mouth_target_listener = None
+    self.defaultQuat = defaultQuat 
 
   #### PUBLIC METHODS
   # we try to make it so that all of these methods are idempotent 
   # and can be called from any state
-  def start_updating_target_relative_to_mouth(self, robot_coord_offset=[0,0,0]):
+  def start_updating_target_to_pose(self, target_pose_topic):
     self._stop_updating_target() 
-    self.target_listener = rospy.Subscriber(point_topic, Point, self._update_target_camera_frame, (robot_coord_offset))
+    self.pose_target_listener = rospy.Subscriber(target_pose_topic, Pose, self._update_target_pose_robot_frame)
+
+  def start_updating_target_to_point(self, mouth_point_topic, robot_coord_offset=[0,0,0]):
+    self._stop_updating_target() 
+    self.mouth_target_listener = rospy.Subscriber(mouth_point_topic, Point, self._update_target_camera_frame, (robot_coord_offset))
   
   def start_tracking_fixed_target(self, robot_coord_point):
     self._stop_updating_target() 
     # you just send the target point, you don't need to continually update it
-    self._update_target(target=Point(robot_coord_point[0], robot_coord_point[1], robot_coord_point[2]), constrainMotion=True)
+    self._update_target(target=Pose(Point(robot_coord_point[0], robot_coord_point[1], robot_coord_point[2]), self.defaultQuat))
 
   def stop_moving(self):
     self._stop_updating_target()
@@ -90,8 +95,10 @@ class TrackerInterface:
 
   #### PRIVATE METHODS #####
   def _stop_updating_target(self):
-    if (self.target_listener is not None):
-      self.target_listener.unregister()
+    if (self.mouth_target_listener is not None):
+      self.mouth_target_listener.unregister()
+    if (self.pose_target_listener is not None):
+      self.pose_target_listener.unregister()
 
   # return an np.array of the [x,y,z] target mouth location
   # in the coordinate frame of the robot base
@@ -105,4 +112,8 @@ class TrackerInterface:
   # only move for at most timeoutSecs,   
   def _update_target_camera_frame(self, mouth_pos, robot_coord_offset = [0,0,0]):
     endLoc = self._convert_camera_to_robot_frame(mouth_pos) + np.array(robot_coord_offset)
-    self._update_target(target=Point(endLoc[0], endLoc[1], endLoc[2]), constrainMotion=True)
+    self._update_target(target=Pose(Point(endLoc[0], endLoc[1], endLoc[2]), self.defaultQuat))
+  
+  # move toward the target spoon pose
+  def _update_target_pose_robot_frame(self, target_pose):
+    self._update_target(target=target_pose) 

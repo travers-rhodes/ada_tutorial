@@ -3,33 +3,32 @@ import rospy
 import argparse
 import numpy as np
 
-from ada_tutorial.srv import TrackArm, TrackArmResponse
+from ada_tutorial.srv import TrackPose, TrackPoseResponse
 from ada_jacobian_control import AdaJacobianControl
 
 def main(args):
   # initialize the ros node 
-  rospy.init_node('track_arm_server', anonymous=True)
-  tas = TrackArmService(args)
-  s = rospy.Service('update_track_target', TrackArm, tas.handle_target_update)
+  rospy.init_node('track_pose_server', anonymous=True)
+  tas = TrackPoseService(args)
+  s = rospy.Service('update_pose_target', TrackPose, tas.handle_target_update)
   tas.run_tracking()
-  rospy.spin() 
 
-class TrackArmService:
+class TrackPoseService:
   def __init__(self, args):
     self.ada_control = AdaJacobianControl(args,endEffName="Spoon")
-    self.target = None
+    self.target_pose = None
 
   def run_tracking(self):
     # keep this loop from going faster than a fixed amount by means of rospy.rate
     r = rospy.Rate(10) # 10hz
     while not rospy.is_shutdown():
       try:
-        if self.target is not None:
-          self.ada_control.make_step_to_target(self.target, constrainMotion=False)
+        if self.target_pose is not None:
+          self.ada_control.make_step_to_target_pose(self.target_pose)
       except Exception as e:
         rospy.logerr(e)
         # we don't want this service to ever actually throw errors and fail out
-        #raise
+        raise
       # We don't need special code to allow any callbacks to run, in case the user has updated the location
       # since in rospy, callbacks are always called in separate threads 
       # however, since sometimes the loop is a no-op, we add a sleep to keep it from going faster than 10hz
@@ -43,10 +42,10 @@ class TrackArmService:
     # cartesian coordinates relative to the base frame of the arm
     isSuccess = True
     if req.stopMotion:
-      self.target = None
-      return TrackArmResponse(isSuccess)
-    self.target = [req.target.x, req.target.y, req.target.z]
-    return TrackArmResponse(isSuccess)
+      self.pose = None
+      return TrackPoseResponse(isSuccess)
+    self.target_pose = req.target 
+    return TrackPoseResponse(isSuccess)
 
 if __name__=="__main__":
   # parse input arguments
@@ -63,8 +62,3 @@ if __name__=="__main__":
                           help='enable debug logging')
   args = parser.parse_args(rospy.myargv()[1:])
   main(args) 
- 
-  
-   
-  
-  

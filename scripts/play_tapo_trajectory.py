@@ -30,12 +30,13 @@ def get_quat(ox, oy, oz):
 def publish_poses(poseFile):
   pos_list = load_position_list(poseFile)
   starttime = rospy.Time.now().to_sec()
-  slowdown_factor = 1
+  slowdown_factor = 10
   lasttime = pos_list[-1,0] * slowdown_factor # in seconds
   curTime = rospy.Time.now().to_sec() - starttime
   pos_pub = rospy.Publisher("/target_pose", PoseStamped, queue_size=10)
+  target_pub = rospy.Publisher("/Tapo/example_poses", Pose, queue_size=10)
   pos_pub2 = rospy.Publisher("/target_pose2", PoseStamped, queue_size=10)
-  r = rospy.Rate(100) # publish at max 100hz
+  r = rospy.Rate(10) # publish at max 100hz
   while curTime < lasttime:
     #print(curTime, lasttime)
     curRow = np.argmax((pos_list[:,0]  * slowdown_factor) > curTime) - 1
@@ -46,27 +47,34 @@ def publish_poses(poseFile):
                        pos_list[curRow,6])
     h = Header()
     h.stamp = rospy.Time.now()
-    h.frame_id = "odom"
+    h.frame_id = "world"
     pos = pos_list[curRow,1:4]
     curRot = t3d.quaternions.quat2mat(curQuat)
-    pos2 = pos - curRot[:,1]
- 
+    pos2 = pos - curRot[:,1] * 0.3
+
+    rospy.logwarn(curRot)
+
+    curQuat = t3d.quaternions.qmult(curQuat,[0,0,1,0])
     pose = Pose(Point(pos[2],pos[0], pos[1]),
                 Quaternion(curQuat[3],curQuat[1],curQuat[2],curQuat[0]))
     pose2 = Pose(Point(pos2[2],pos2[0], pos2[1]),
                 Quaternion(curQuat[3],curQuat[1],curQuat[2],curQuat[0]))
+    pose2 = Pose(Point(0.15 + pos2[0], 0.15-pos2[2], pos2[1]),
+                Quaternion(curQuat[1],curQuat[2],curQuat[3],curQuat[0]))
 
     poseStamped = PoseStamped(h,pose)
     poseStamped2 = PoseStamped(h,pose2)
     pos_pub.publish(poseStamped)
+    target_pub.publish(pose2)
     pos_pub2.publish(poseStamped2)
     r.sleep()
     curTime = rospy.Time.now().to_sec() - starttime
 
 if __name__=="__main__":
   rospy.init_node("simulate_spoon")
-  for i in range(1,17):
-    poseFile = "subject11_potato_salad/%d.csv"%i
-    #poseFile = "subject10_banana/%d.csv"%i
-    #poseFile = "subject11_noodle/%d.csv"%i
-    publish_poses(poseFile)
+  while not rospy.is_shutdown():
+    for i in range(1,17):
+      poseFile = "subject11_potato_salad/%d.csv"%i
+      #poseFile = "subject10_banana/%d.csv"%i
+      #poseFile = "subject11_noodle/%d.csv"%i
+      publish_poses(poseFile)
