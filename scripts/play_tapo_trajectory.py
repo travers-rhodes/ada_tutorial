@@ -5,7 +5,8 @@ import rospy
 
 import transforms3d as t3d
 
-from geometry_msgs.msg import Pose, Point, Quaternion
+from std_msgs.msg import Header
+from geometry_msgs.msg import PoseStamped, Pose, Point, Quaternion
 
 def load_position_list(filename):
   rospack = rospkg.RosPack()
@@ -16,7 +17,7 @@ def load_position_list(filename):
 
 def get_sampled_pos_data(rawData):
   datShape = rawData.shape
-  sampleIndices = np.arange(0,datShape[0],100)
+  sampleIndices = np.arange(0,datShape[0],1)
   # time, px, py, pz, ox, oy, oz
   datIndices = np.array([0,7,8,9,10,11,12])
   return(rawData[sampleIndices,:][:,datIndices]) 
@@ -26,21 +27,46 @@ def get_quat(ox, oy, oz):
   quat = t3d.euler.euler2quat(oz, oy, ox, 'rzyx')
   return quat
 
-if __name__=="__main__":
-  rospy.init_node("simulate_spoon")
-  pos_list = load_position_list("subject11_potato_salad/1.csv")
+def publish_poses(poseFile):
+  pos_list = load_position_list(poseFile)
   starttime = rospy.Time.now().to_sec()
-  lasttime = starttime + pos_list[-1,0] # in seconds
-  curTime = rospy.Time.now().to_sec()
-  pos_pub = rospy.Publisher("/target_pose", Pose, queue_size=10)
-  r = rospy.Rate(10) # publish at max 10hz
+  slowdown_factor = 1
+  lasttime = pos_list[-1,0] * slowdown_factor # in seconds
+  curTime = rospy.Time.now().to_sec() - starttime
+  pos_pub = rospy.Publisher("/target_pose", PoseStamped, queue_size=10)
+  pos_pub2 = rospy.Publisher("/target_pose2", PoseStamped, queue_size=10)
+  r = rospy.Rate(100) # publish at max 100hz
   while curTime < lasttime:
-    curRow = np.argmax(pos_list[:,0] + starttime > curTime) - 1
+    #print(curTime, lasttime)
+    curRow = np.argmax((pos_list[:,0]  * slowdown_factor) > curTime) - 1
+    #print((pos_list[:,0]  * slowdown_factor) < curTime)
+    #print(curRow)
     curQuat = get_quat(pos_list[curRow,4], 
                        pos_list[curRow,5],
                        pos_list[curRow,6])
-    pose = Pose(Point(pos_list[curRow,1],pos_list[curRow,2],pos_list[curRow,3]),
-                Quaternion(curQuat[1],curQuat[2],curQuat[3],curQuat[0]))
-    pos_pub.publish(pose)
+    h = Header()
+    h.stamp = rospy.Time.now()
+    h.frame_id = "odom"
+    pos = pos_list[curRow,1:4]
+    curRot = t3d.quaternions.quat2mat(curQuat)
+    pos2 = pos - curRot[:,1]
+ 
+    pose = Pose(Point(pos[2],pos[0], pos[1]),
+                Quaternion(curQuat[3],curQuat[1],curQuat[2],curQuat[0]))
+    pose2 = Pose(Point(pos2[2],pos2[0], pos2[1]),
+                Quaternion(curQuat[3],curQuat[1],curQuat[2],curQuat[0]))
+
+    poseStamped = PoseStamped(h,pose)
+    poseStamped2 = PoseStamped(h,pose2)
+    pos_pub.publish(poseStamped)
+    pos_pub2.publish(poseStamped2)
     r.sleep()
-    curTime = rospy.Time.now().to_sec()
+    curTime = rospy.Time.now().to_sec() - starttime
+
+if __name__=="__main__":
+  rospy.init_node("simulate_spoon")
+  for i in range(1,17):
+    poseFile = "subject11_potato_salad/%d.csv"%i
+    #poseFile = "subject10_banana/%d.csv"%i
+    #poseFile = "subject11_noodle/%d.csv"%i
+    publish_poses(poseFile)
