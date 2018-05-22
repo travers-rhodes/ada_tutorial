@@ -14,6 +14,7 @@ class State(Enum):
 distance_to_goal_topic = "/distance_to_goal" # std_msgs/Float64
 head_moving_topic = "/head_moving" # std_msgs/Bool
 head_not_moving_topic = "/head_not_moving" # std_msgs/Bool
+food_acquired_topic = "/food_acquired" # std_msgs/Bool
                        
 class TransitionLogic:
   def __enter__(self):
@@ -36,17 +37,27 @@ class EmptyStateTransitionLogic(TransitionLogic):
     return State.PICK_UP_FOOD
 
 class PickUpStateTransitionLogic(TransitionLogic):
+  def __init__(self):
+    self.food_acquired = False
+    self.listenForFoodAcquired = rospy.Subscriber(food_acquired_topic, Bool, self.update_food_acquired)
+
+  def __exit__(self, exc_type, exc_value, traceback):
+    self.listenForFoodAcquired.unregister()
+
   def wait_and_return_next_state(self):
     rospy.logwarn("Picking up food")
-    rospy.sleep(20)
+    r = rospy.Rate(10) # 10Hz
+    while not self.food_acquired:
+      r.sleep() 
     return State.WAIT_FULL
+  
+  def update_head_ready(self, message):
+    self.food_acquired = message.data
 
 class WaitFullStateTransitionLogic(TransitionLogic):
   def __init__(self):
     self.ready_for_bite = False
-    rospy.logwarn("Subscribing to a random topic")
     self.listenForReady = rospy.Subscriber(head_not_moving_topic, Bool, self.update_head_ready)
-    rospy.logwarn("Done subscribing to a random topic")
 
   def __exit__(self, exc_type, exc_value, traceback):
     self.listenForReady.unregister()

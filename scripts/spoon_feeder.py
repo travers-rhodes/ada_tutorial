@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import rospy
 import numpy as np
+from threading import Thread
 
 import tracker_interface as tracker
 from state_transition_logic import transitionLogicDictionary, State
@@ -19,8 +20,6 @@ class SpoonFeeder:
       rospy.logwarn("About to wait and return")
       nextState = transitionLogic.wait_and_return_next_state() 
       rospy.logwarn("returned")
-      # stay here for now
-      nextState = State.PICK_UP_FOOD
       self._set_state(nextState)
 
   def _set_state(self, state):

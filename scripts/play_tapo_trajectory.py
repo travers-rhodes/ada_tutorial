@@ -5,7 +5,7 @@ import rospy
 
 import transforms3d as t3d
 
-from std_msgs.msg import Header
+from std_msgs.msg import Header, Bool
 from geometry_msgs.msg import PoseStamped, Pose, Point, Quaternion
 
 def load_position_list(filename):
@@ -32,11 +32,11 @@ def publish_poses(poseFile):
   starttime = rospy.Time.now().to_sec()
   slowdown_factor = 10
   lasttime = pos_list[-1,0] * slowdown_factor # in seconds
+  lasttime = lasttime * 3/4.0
   curTime = rospy.Time.now().to_sec() - starttime
-  pos_pub = rospy.Publisher("/target_pose", PoseStamped, queue_size=10)
   target_pub = rospy.Publisher("/Tapo/example_poses", Pose, queue_size=10)
-  pos_pub2 = rospy.Publisher("/target_pose2", PoseStamped, queue_size=10)
-  r = rospy.Rate(10) # publish at max 100hz
+  pos_pub = rospy.Publisher("/target_pose", PoseStamped, queue_size=10)
+  r = rospy.Rate(10) # publish at max 10hz
   while curTime < lasttime:
     #print(curTime, lasttime)
     curRow = np.argmax((pos_list[:,0]  * slowdown_factor) > curTime) - 1
@@ -55,20 +55,16 @@ def publish_poses(poseFile):
     rospy.logwarn(curRot)
 
     curQuat = t3d.quaternions.qmult(curQuat,[0,0,1,0])
-    pose = Pose(Point(pos[2],pos[0], pos[1]),
-                Quaternion(curQuat[3],curQuat[1],curQuat[2],curQuat[0]))
-    pose2 = Pose(Point(pos2[2],pos2[0], pos2[1]),
-                Quaternion(curQuat[3],curQuat[1],curQuat[2],curQuat[0]))
-    pose2 = Pose(Point(0.15 + pos2[0], 0.15-pos2[2], pos2[1]),
+    pose = Pose(Point(0.15 + pos2[0], 0.15-pos2[2], pos2[1]),
                 Quaternion(curQuat[1],curQuat[2],curQuat[3],curQuat[0]))
 
     poseStamped = PoseStamped(h,pose)
-    poseStamped2 = PoseStamped(h,pose2)
+    target_pub.publish(pose)
     pos_pub.publish(poseStamped)
-    target_pub.publish(pose2)
-    pos_pub2.publish(poseStamped2)
     r.sleep()
     curTime = rospy.Time.now().to_sec() - starttime
+  food_acquired_pub = rospy.Publisher("/food_acquired", Bool, queue_size=10)
+  food_acquired_pub.publish(Bool(True))  
 
 if __name__=="__main__":
   rospy.init_node("simulate_spoon")
