@@ -18,8 +18,12 @@ class AdaJacobianControl():
     ###
     # what is the fraction of the max speed we allow motors to go
     self.velocity_fraction = 1
-    # what fraction of the distance to the goal do we travel on each step
-    self.step_fraction = 0.1
+    # how far can the end-effector move on each step
+    self.transStepSize = 0.05
+    self.angleStepSize = 0.1
+    self.transEpsilon = 0.001
+    # this one's a weird number, but it's a measure of how far off the rotation can get before we try to correct
+    self.quatEpsilon = 0.001
     # what is the largest number of radians we allow a motor to rotate in each linear step
     self.max_rotation_per_step = 0.4
     ###
@@ -56,16 +60,14 @@ class AdaJacobianControl():
                         endPose.orientation.x, 
                         endPose.orientation.y, 
                         endPose.orientation.z])
-    transEpsilon = 0.02
-    quatEpsilon = 0.0002 
     curtrans = self.manip.GetEndEffectorTransform()
     curCartLoc = curtrans[0:3,3]
     quat_dist = th.quat_distance(t3d.quaternions.mat2quat(curtrans[0:3,0:3]), endQuat)
     rospy.logwarn("quat_dist is %s"%quat_dist)
     # don't do anything if close enough to target
-    if (th.distance(curCartLoc, endLoc) < transEpsilon and
+    if (th.distance(curCartLoc, endLoc) < self.transEpsilon and
        # quat_distance is between 0 and 1
-       quat_dist < quatEpsilon):
+       quat_dist < self.quatEpsilon):
       return
     pseudoEndLoc = self.get_pseudo_endLoc(curCartLoc, endLoc)
     self.make_step_to_pseudotarget(pseudoEndLoc, endQuat)
@@ -77,7 +79,18 @@ class AdaJacobianControl():
       jac= self.manip.CalculateJacobian()
       angVelJac = self.manip.CalculateAngularVelocityJacobian()
       curLoc = self.robot.GetDOFValues(self.arm_indices)
-      step = th.least_squares_step(jac, angVelJac, diffTrans, diffRotAxis * diffRotAngle) * self.step_fraction
+      transDist = th.distance(diffTrans,[0,0,0])
+      if transDist > self.transStepSize:
+        stepScale = self.transStepSize / transDist
+        diffTrans = diffTrans * stepScale
+        diffRotAngle = diffRotAngle * stepScale 
+        rospy.logwarn("Translation was larger than transStepSize, so only going %f of the way"%stepScale)
+      if diffRotAngle > self.angleStepSize:
+        angScale = self.angleStepSize / diffRotAngle
+        diffTrans = diffTrans * angScale 
+        diffRotAngle = diffRotAngle * angScale 
+        rospy.logwarn("Rotation was larger than angleStepSize, so only going %f of the way"%angScale)
+      step = th.least_squares_step(jac, angVelJac, diffTrans, diffRotAxis * diffRotAngle) 
       desMaxChange = self.max_rotation_per_step
       curMaxChange = max(abs(step))
       if curMaxChange > desMaxChange:

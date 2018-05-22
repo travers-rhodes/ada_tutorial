@@ -20,7 +20,7 @@ class TrackPoseService:
 
   def run_tracking(self):
     # keep this loop from going faster than a fixed amount by means of rospy.rate
-    r = rospy.Rate(10) # 10hz
+    r = rospy.Rate(50) # 10hz
     while not rospy.is_shutdown():
       try:
         if self.target_pose is not None:

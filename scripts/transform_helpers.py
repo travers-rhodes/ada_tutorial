@@ -50,7 +50,7 @@ def distance(curLoc, endLoc):
 
 def quat_distance(curQuat, endQuat):
   diff = t3d.quaternions.qmult(t3d.quaternions.qinverse(curQuat), endQuat)
-  return 1-(diff[0]**2)
+  return np.sqrt(1-(diff[0]**2))
 
 # given the current transform and the target location and target orientation, 
 # what is the translation and rotation we need to perform to move current transform to target
@@ -187,7 +187,7 @@ if __name__=="__main__":
     def test_quat_distance(self):
       self.assertEqual(quat_distance([0,1,0,0], [0,1,0,0]), 0)
       self.assertEqual(quat_distance([0,1,0,0], [1,0,0,0]), 1)
-      self.assertEqual(quat_distance([1/np.sqrt(2),1/np.sqrt(2),0,0], [1/np.sqrt(2),0,1/np.sqrt(2),0]), 3.0/4)
+      self.assertEqual(quat_distance([1/np.sqrt(2),1/np.sqrt(2),0,0], [1/np.sqrt(2),0,1/np.sqrt(2),0]), np.sqrt(3.0/4))
 
 
   unittest.main()

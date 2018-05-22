@@ -30,9 +30,10 @@ def get_quat(ox, oy, oz):
 def publish_poses(poseFile):
   pos_list = load_position_list(poseFile)
   starttime = rospy.Time.now().to_sec()
-  slowdown_factor = 10
+  slowdown_factor = 10 
   lasttime = pos_list[-1,0] * slowdown_factor # in seconds
-  lasttime = lasttime * 3/4.0
+  # only run the first 3/4 of the trajectory
+  lasttime = lasttime  * 3/4.0
   curTime = rospy.Time.now().to_sec() - starttime
   target_pub = rospy.Publisher("/Tapo/example_poses", Pose, queue_size=10)
   pos_pub = rospy.Publisher("/target_pose", PoseStamped, queue_size=10)
@@ -69,7 +70,7 @@ def publish_poses(poseFile):
 if __name__=="__main__":
   rospy.init_node("simulate_spoon")
   while not rospy.is_shutdown():
-    for i in range(1,17):
+    for i in range(2,3):
       poseFile = "subject11_potato_salad/%d.csv"%i
       #poseFile = "subject10_banana/%d.csv"%i
       #poseFile = "subject11_noodle/%d.csv"%i
