@@ -5,6 +5,8 @@ from threading import Thread
 
 import tracker_interface as tracker
 from feeding_state_transition_logic import transitionLogicDictionary, State
+from ada_tutorial.srv import PlayTrajectory
+from std_msgs.msg import String
 from geometry_msgs.msg import Quaternion
 
 
@@ -12,14 +14,17 @@ class SpoonFeeder:
   def __init__(self):
     self.defaultQuat = Quaternion(1/np.sqrt(2), 0, 0, 1/np.sqrt(2))
     self.tracker = tracker.TrackerInterface(self.defaultQuat)
+    self.play_trajectory_topic = "/Tapo/example_poses"
+    self._play_trajectory = rospy.ServiceProxy("play_trajectory", PlayTrajectory)
     rospy.logwarn("TrackerInterface successfully initialized")
-    self.state = State.WAIT_EMPTY
+    self._set_state(State.WAIT_EMPTY)
 
     while not rospy.is_shutdown():
       transitionLogic = transitionLogicDictionary[self.state]()
       rospy.logwarn("About to wait and return")
       nextState = transitionLogic.wait_and_return_next_state() 
       rospy.logwarn("returned")
+      self.offset = 0
       self._set_state(nextState)
 
   def _set_state(self, state):
@@ -33,8 +38,12 @@ class SpoonFeeder:
         self.state == State.WAIT_WHILE_BITE): 
       self.tracker.stop_moving()
     elif self.state == State.PICK_UP_FOOD:
-      target_pose_topic = "/Tapo/example_poses"
-      self.tracker.start_updating_target_to_pose(target_pose_topic)
+      if self.offset == 0:
+        self.offset = 0.05
+      else:
+        self.offset = 0
+      self.tracker.start_updating_target_to_pose(self.play_trajectory_topic,[self.offset, 0, 0])
+      self._play_trajectory(String(self.play_trajectory_topic))
     elif self.state == State.MOVE_TO_MOUTH:
       mouth_point_topic = "/DO/inferenceOut/Point"
       self.tracker.start_updating_target_to_point(mouth_point_topic)

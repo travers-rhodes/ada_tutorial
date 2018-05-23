@@ -8,5 +8,6 @@
   <node name="track_pose_service" pkg="ada_tutorial" type="track_pose_server.py" args="$(arg track_pose_server_flags)"/>
   <node name="spoon_feeder" pkg="ada_tutorial" type="spoon_feeder.py"/> 
   <node name="dummy_mouth_publisher" pkg="ada_tutorial" type="dummy_mouth_publisher.py" if="$(arg simulate_mouth)"/>
+  <node name="play_trajectory_service" pkg="ada_tutorial" type="play_trajectory_server.py"/>
 
 </launch>
