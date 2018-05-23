@@ -53,7 +53,7 @@ def publish_poses(poseFile, pose_topic):
     curRot = t3d.quaternions.quat2mat(curQuat)
     pos2 = pos - curRot[:,1] * 0.3
 
-    rospy.logwarn(curRot)
+    #rospy.logwarn(curRot)
 
     curQuat = t3d.quaternions.qmult(curQuat,[0,0,1,0])
     pose = Pose(Point(0.15 + pos2[0], 0.15-pos2[2], pos2[1]),

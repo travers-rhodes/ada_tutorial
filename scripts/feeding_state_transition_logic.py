@@ -2,6 +2,7 @@ import rospy
 from enum import Enum
 
 from std_msgs.msg import Bool, Float64
+from ada_tutorial.srv import ObjectSpoon
 
 class State(Enum):
   WAIT_EMPTY = 1
@@ -11,10 +12,12 @@ class State(Enum):
   WAIT_WHILE_BITE = 5
   MOVE_TO_PLATE = 6
 
-distance_to_goal_topic = "/distance_to_goal" # std_msgs/Float64
+distance_to_goal_topic = "/distance_to_target" # std_msgs/Float64
 head_moving_topic = "/head_moving" # std_msgs/Bool
 head_not_moving_topic = "/head_not_moving" # std_msgs/Bool
 food_acquired_topic = "/food_acquired" # std_msgs/Bool
+
+object_in_spoon_service_name = "detect_object_spoon" #ObjectSpoon.srv
                        
 class TransitionLogic:
   def __enter__(self):
@@ -37,9 +40,11 @@ class EmptyStateTransitionLogic(TransitionLogic):
     return State.PICK_UP_FOOD
 
 class PickUpStateTransitionLogic(TransitionLogic):
-  def __init__(self):
+  def __enter__(self):
     self.food_acquired = False
     self.listenForFoodAcquired = rospy.Subscriber(food_acquired_topic, Bool, self.update_food_acquired)
+    self._check_spoon = rospy.ServiceProxy(detect_object_spoon, ObjectSpoon)
+    return self
 
   def __exit__(self, exc_type, exc_value, traceback):
     self.listenForFoodAcquired.unregister()
@@ -48,16 +53,20 @@ class PickUpStateTransitionLogic(TransitionLogic):
     rospy.logwarn("Picking up food")
     r = rospy.Rate(10) # 10Hz
     while not self.food_acquired:
-      r.sleep() 
-    return State.WAIT_FULL
+      r.sleep()
+    check_spoon_response = self._check_spoon(ObjectSpoon())
+    if check_spoon_response.object_present:
+      return State.WAIT_FULL
+    return State.PICK_UP_FOOD
   
-  def update_head_ready(self, message):
+  def update_food_acquired(self, message):
     self.food_acquired = message.data
 
 class WaitFullStateTransitionLogic(TransitionLogic):
-  def __init__(self):
+  def __enter__(self):
     self.ready_for_bite = False
     self.listenForReady = rospy.Subscriber(head_not_moving_topic, Bool, self.update_head_ready)
+    return self
 
   def __exit__(self, exc_type, exc_value, traceback):
     self.listenForReady.unregister()
@@ -76,11 +85,13 @@ class WaitFullStateTransitionLogic(TransitionLogic):
     self.ready_for_bite = message.data
 
 class MoveToMouthStateTransitionLogic(TransitionLogic):
-  def __init__(self):
+  def __enter__(self):
     self.distance_to_goal = None
     self.head_is_moving = False
+    self.start_time = rospy.Time.now()
     self.listenForCancel = rospy.Subscriber(head_moving_topic, Bool, self.update_head_moving)
     self.listenForSuccess = rospy.Subscriber(distance_to_goal_topic, Float64, self.update_distance_to_goal)
+    return self
   
   def __exit__(self, exc_type, exc_value, traceback):
     self.listenForSuccess.unregister()
@@ -100,7 +111,13 @@ class MoveToMouthStateTransitionLogic(TransitionLogic):
   def update_head_moving(self, message):
     self.head_is_moving = message.data
   def update_distance_to_goal(self, message):
-    self.distance_to_goal = message.data
+    # you aren't allowed to get to the goal in less than one second
+    # this way we're sure our signal isn't reading the distance
+    # to the previous goal
+    rospy.logwarn("Distance to goal is %s"%message.data)
+    if (rospy.Time.now() - self.start_time).to_sec() > 3:
+      rospy.logwarn("And we've waited 3 seconds")
+      self.distance_to_goal = message.data
 
 class WaitWhileBiteStateTransitionLogic(TransitionLogic):
   def wait_and_return_next_state(self):
@@ -109,9 +126,10 @@ class WaitWhileBiteStateTransitionLogic(TransitionLogic):
     return State.MOVE_TO_PLATE
 
 class MoveToPlateStateTransitionLogic(TransitionLogic):
-  def __init__(self):
+  def __enter__(self):
     self.distance_to_goal = None
     self.listenForSuccess = rospy.Subscriber(distance_to_goal_topic, Float64, self.update_distance_to_goal)
+    return self
     
   def __exit__(self, exc_type, exc_value, traceback):
     self.listenForSuccess.unregister()

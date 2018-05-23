@@ -60,6 +60,7 @@ add_service_files(
   FILES
   TrackPose.srv
   PlayTrajectory.srv
+  ObjectSpoon.srv
 )
 
 ## Generate actions in the 'action' folder

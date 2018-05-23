@@ -10,6 +10,7 @@ import adapy
 
 import transform_helpers as th
 import transforms3d as t3d
+from std_msgs.msg import Float64
  
 class AdaJacobianControl():
   def __init__(self, args, endEffName="Spoon"): 
@@ -26,6 +27,7 @@ class AdaJacobianControl():
     self.quatEpsilon = 0.001
     # what is the largest number of radians we allow a motor to rotate in each linear step
     self.max_rotation_per_step = 0.4
+    self.distance_pub = rospy.Publisher("/distance_to_target", Float64, queue_size=10)
     ###
     ### Initialize robot
     ###
@@ -63,7 +65,7 @@ class AdaJacobianControl():
     curtrans = self.manip.GetEndEffectorTransform()
     curCartLoc = curtrans[0:3,3]
     quat_dist = th.quat_distance(t3d.quaternions.mat2quat(curtrans[0:3,0:3]), endQuat)
-    rospy.logwarn("quat_dist is %s"%quat_dist)
+    #rospy.logwarn("quat_dist is %s"%quat_dist)
     # don't do anything if close enough to target
     if (th.distance(curCartLoc, endLoc) < self.transEpsilon and
        # quat_distance is between 0 and 1
@@ -80,6 +82,7 @@ class AdaJacobianControl():
       angVelJac = self.manip.CalculateAngularVelocityJacobian()
       curLoc = self.robot.GetDOFValues(self.arm_indices)
       transDist = th.distance(diffTrans,[0,0,0])
+      self.distance_pub.publish(Float64(transDist))
       if transDist > self.transStepSize:
         stepScale = self.transStepSize / transDist
         diffTrans = diffTrans * stepScale
@@ -106,7 +109,7 @@ class AdaJacobianControl():
   # todo: clean this up. But in general, if you're moving large distances in y,
   # then you should stay away from the pivot point (increase your x) 
   def get_pseudo_endLoc(self, curCartLoc, endLoc):
-    rospy.logwarn("CURRENT POSITION is %s" % curCartLoc)
+    #rospy.logwarn("CURRENT POSITION is %s" % curCartLoc)
     breaks = [-0.15, -0.07, 0, 0.07, 0.15]
     lenMinusOne = len(breaks) - 1
     pseudoEndLoc = np.array(endLoc)
@@ -118,7 +121,7 @@ class AdaJacobianControl():
       elif curCartLoc[1] > breaks[i+1] and endLoc[1] < breaks[i]:
         pseudoEndLoc[1] = (breaks[i+1] + breaks[i])/2.0
         pseudoEndLoc[0] = endLoc[0] + 0.2
-    rospy.logwarn("pseudoEndLoc is %s"% pseudoEndLoc)
+    #rospy.logwarn("pseudoEndLoc is %s"% pseudoEndLoc)
     return pseudoEndLoc
 
   def create_two_point_trajectory(self,goal_joint_values):
