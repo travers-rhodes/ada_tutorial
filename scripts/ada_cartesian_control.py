@@ -21,7 +21,7 @@ def move_to_target(self, endLoc, constrainMotion=False):
     Tgoal = np.concatenate((np.concatenate((self.rot, np.transpose([endLoc])), axis=1),[[0,0,0,1]]), axis=0)
     constrainttaskmatrix=np.eye(4)
     constraintmatrix = np.eye(4) 
-    constrainterrorthresh = 0.2 # tutorial had 0.005
+    constrainterrorthresh = 0.02 # tutorial had 0.005
     constraintfreedoms = [0,0,0,0,0,0] # don't penalize any direction of motion
     if constrainMotion:
       # don't let any x,y,z rotations happen
