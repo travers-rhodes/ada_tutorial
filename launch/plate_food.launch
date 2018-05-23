@@ -1,0 +1,7 @@
+<launch>
+  <arg name="track_pose_server_flags" default="-s -v"/>
+
+  <node name="track_pose_service" pkg="ada_tutorial" type="track_pose_server.py" args="$(arg track_pose_server_flags)"/>
+  <node name="play_trajectory_service" pkg="ada_tutorial" type="play_trajectory_server.py"/>
+  <node name="rice_plater" pkg="ada_tutorial" type="rice_plater.py"/> 
+</launch>

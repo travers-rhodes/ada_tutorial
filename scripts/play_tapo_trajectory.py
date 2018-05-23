@@ -27,18 +27,18 @@ def get_quat(ox, oy, oz):
   quat = t3d.euler.euler2quat(oz, oy, ox, 'rzyx')
   return quat
 
-def publish_poses(poseFile):
+def publish_poses(poseFile, pose_topic):
   pos_list = load_position_list(poseFile)
-  starttime = rospy.Time.now().to_sec()
-  slowdown_factor = 10 
+  starttime = rospy.Time.now().to_sec() - 2.5 # skip the first chunk of time
+  slowdown_factor = 5
   lasttime = pos_list[-1,0] * slowdown_factor # in seconds
   # only run the first 3/4 of the trajectory
   lasttime = lasttime  * 3/4.0
   curTime = rospy.Time.now().to_sec() - starttime
-  target_pub = rospy.Publisher("/Tapo/example_poses", Pose, queue_size=10)
+  target_pub = rospy.Publisher(pose_topic, Pose, queue_size=10)
   pos_pub = rospy.Publisher("/target_pose", PoseStamped, queue_size=10)
   r = rospy.Rate(10) # publish at max 10hz
-  while curTime < lasttime:
+  while curTime < lasttime and not rospy.is_shutdown():
     #print(curTime, lasttime)
     curRow = np.argmax((pos_list[:,0]  * slowdown_factor) > curTime) - 1
     #print((pos_list[:,0]  * slowdown_factor) < curTime)
@@ -64,7 +64,10 @@ def publish_poses(poseFile):
     pos_pub.publish(poseStamped)
     r.sleep()
     curTime = rospy.Time.now().to_sec() - starttime
+  rospy.logwarn("Done playing trajectory. Now we publish the fact that we're done to food_acquired")
   food_acquired_pub = rospy.Publisher("/food_acquired", Bool, queue_size=10)
+  # https://github.com/ros/ros_comm/issues/176
+  rospy.sleep(1)
   food_acquired_pub.publish(Bool(True))  
 
 if __name__=="__main__":
@@ -74,4 +77,4 @@ if __name__=="__main__":
       poseFile = "subject11_potato_salad/%d.csv"%i
       #poseFile = "subject10_banana/%d.csv"%i
       #poseFile = "subject11_noodle/%d.csv"%i
-      publish_poses(poseFile)
+      publish_poses(poseFile, "/Tapo/example_poses")

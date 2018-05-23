@@ -4,7 +4,7 @@ import numpy as np
 from threading import Thread
 
 import tracker_interface as tracker
-from state_transition_logic import transitionLogicDictionary, State
+from feeding_state_transition_logic import transitionLogicDictionary, State
 from geometry_msgs.msg import Quaternion
 
 

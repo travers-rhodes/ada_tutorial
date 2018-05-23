@@ -59,6 +59,7 @@ find_package(catkin REQUIRED COMPONENTS
 add_service_files(
   FILES
   TrackPose.srv
+  PlayTrajectory.srv
 )
 
 ## Generate actions in the 'action' folder

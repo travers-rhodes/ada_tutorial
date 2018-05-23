@@ -1,6 +1,0 @@
-<launch>
-  <arg name="move_arm_server_flags" default="-s -v"/>
-  <arg name="planner_flags" default=""/>
-  <node name="move_arm_service" pkg="ada_tutorial" type="move_arm_server.py" args="$(arg move_arm_server_flags)"/>
-  <node name="planner" pkg="ada_tutorial" type="planner.py" args="$(arg planner_flags)"/>
-</launch>

@@ -75,9 +75,9 @@ class TrackerInterface:
   #### PUBLIC METHODS
   # we try to make it so that all of these methods are idempotent 
   # and can be called from any state
-  def start_updating_target_to_pose(self, target_pose_topic):
+  def start_updating_target_to_pose(self, target_pose_topic, robot_coord_offset=[0,0,0]):
     self._stop_updating_target() 
-    self.pose_target_listener = rospy.Subscriber(target_pose_topic, Pose, self._update_target_pose_robot_frame)
+    self.pose_target_listener = rospy.Subscriber(target_pose_topic, Pose, self._update_target_pose_robot_frame, (robot_coord_offset))
 
   def start_updating_target_to_point(self, mouth_point_topic, robot_coord_offset=[0,0,0]):
     self._stop_updating_target() 
@@ -115,5 +115,11 @@ class TrackerInterface:
     self._update_target(target=Pose(Point(endLoc[0], endLoc[1], endLoc[2]), self.defaultQuat))
   
   # move toward the target spoon pose
-  def _update_target_pose_robot_frame(self, target_pose):
-    self._update_target(target=target_pose) 
+  def _update_target_pose_robot_frame(self, target_pose, robot_coord_offset = [0,0,0]):
+    newPosition = Point(target_pose.position.x + robot_coord_offset[0],
+                        target_pose.position.y + robot_coord_offset[1],
+                        target_pose.position.z + robot_coord_offset[2])
+    self._update_target(target=Pose(newPosition, target_pose.orientation))
+
+
+

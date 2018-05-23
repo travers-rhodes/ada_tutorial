@@ -5,6 +5,7 @@ import numpy as np
 
 import play_tapo_trajectory as ptt
 
+from std_msgs.msg import Bool
 from ada_tutorial.srv import PlayTrajectory, PlayTrajectoryResponse 
 
 def main():
@@ -16,19 +17,25 @@ def main():
 
 class PlayTrajectoryService:
   def __init__(self):
-    self.is_playing = False
+    self.should_play = False
+    self.pose_topic = None
 
   def play_when_called(self):
     # keep this loop from going faster than a fixed amount by means of rospy.rate
+    # this time gives the max amount of time it takes for this player to start playing
+    # but the loop will pause while the player plays
     r = rospy.Rate(10) # 10hz
     while not rospy.is_shutdown():
       try:
-        if self.target_pose is not None:
-          ptt.publish_poses("subject11_potato_salad/2.csv")
+        if self.should_play:
+          if self.pose_topic is None:
+            rospy.logerr("pose_topic should be set before should_play is set")
+          ptt.publish_poses("subject11_potato_salad/2.csv", self.pose_topic)
+          self.should_play = False
       except Exception as e:
         rospy.logerr(e)
         # we don't want this service to ever actually throw errors and fail out
-        raise
+        #raise
       # We don't need special code to allow any callbacks to run, in case the user has updated the location
       # since in rospy, callbacks are always called in separate threads 
       # however, since sometimes the loop is a no-op, we add a sleep to keep it from going faster than 10hz
@@ -36,29 +43,13 @@ class PlayTrajectoryService:
 
   # takes in a TrackArm request and calls ada_control 
   # to move the arm based on that request
-  def handle_target_update(self, req):
-    # move_to_target's endLoc should be a length 3 np.array
-    # of the coordinates to move the end-effector of the arm to in
-    # cartesian coordinates relative to the base frame of the arm
-    isSuccess = True
-    if req.stopMotion:
-      self.pose = None
-      return TrackPoseResponse(isSuccess)
-    self.target_pose = req.target 
-    return TrackPoseResponse(isSuccess)
+  def handle_play_request(self, req):
+    if self.should_play:
+      rospy.logerr("Player was currently playing when another request to play was called. The new request to play will be ignored")
+      return PlayTrajectoryResponse(Bool(False))
+    self.pose_topic = req.pose_topic.data
+    self.should_play = True
+    return PlayTrajectoryResponse(Bool(True))
 
 if __name__=="__main__":
-  # parse input arguments
-  parser = argparse.ArgumentParser(description='service server node to move arm to a given position')
-  parser.add_argument('-s', '--sim', action='store_true',
-                          help='simulation mode')
-  parser.add_argument('-j', '--useJacobian', action='store_true',
-                          help='simulation mode')
-  parser.add_argument('-v', '--viewer', nargs='?', const=True,
-                          help='attach a viewer of the specified type')
-  parser.add_argument('--env-xml', type=str,
-                          help='environment XML file; defaults to an empty environment')
-  parser.add_argument('--debug', action='store_true',
-                          help='enable debug logging')
-  args = parser.parse_args(rospy.myargv()[1:])
-  main(args) 
+  main() 
