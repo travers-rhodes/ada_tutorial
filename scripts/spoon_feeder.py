@@ -17,7 +17,6 @@ class SpoonFeeder:
     self.play_trajectory_topic = "/Tapo/example_poses"
     self._play_trajectory = rospy.ServiceProxy("play_trajectory", PlayTrajectory)
     rospy.logwarn("TrackerInterface successfully initialized")
-    self.offset = 0
     self._set_state(State.WAIT_EMPTY)
 
     while not rospy.is_shutdown():
@@ -38,10 +37,7 @@ class SpoonFeeder:
         self.state == State.WAIT_WHILE_BITE): 
       self.tracker.stop_moving()
     elif self.state == State.PICK_UP_FOOD:
-      if self.offset == 0:
-        self.offset = 0.05
-      else:
-        self.offset = 0
+      self.offset = np.random.uniform() * 0.06
       self.tracker.start_updating_target_to_pose(self.play_trajectory_topic,[self.offset, 0, 0])
       self._play_trajectory(String(self.play_trajectory_topic))
     elif self.state == State.MOVE_TO_MOUTH:

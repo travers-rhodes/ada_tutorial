@@ -43,7 +43,7 @@ class PickUpStateTransitionLogic(TransitionLogic):
   def __enter__(self):
     self.food_acquired = False
     self.listenForFoodAcquired = rospy.Subscriber(food_acquired_topic, Bool, self.update_food_acquired)
-    self._check_spoon = rospy.ServiceProxy(detect_object_spoon, ObjectSpoon)
+    self._check_spoon = rospy.ServiceProxy(object_in_spoon_service_name, ObjectSpoon)
     return self
 
   def __exit__(self, exc_type, exc_value, traceback):
@@ -54,7 +54,7 @@ class PickUpStateTransitionLogic(TransitionLogic):
     r = rospy.Rate(10) # 10Hz
     while not self.food_acquired:
       r.sleep()
-    check_spoon_response = self._check_spoon(ObjectSpoon())
+    check_spoon_response = self._check_spoon()
     if check_spoon_response.object_present:
       return State.WAIT_FULL
     return State.PICK_UP_FOOD
