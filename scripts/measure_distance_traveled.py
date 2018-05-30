@@ -13,7 +13,7 @@ class TrackDistance:
 
   def current_position_callback(self, msg):
     if not self.is_active:
-      rospy.logwarn("Distance measure not active")
+      #rospy.logwarn("Distance measure not active")
       return 
     curLoc = np.array([msg.point.x, msg.point.y, msg.point.z])
     if self.last_position is None:
@@ -23,7 +23,7 @@ class TrackDistance:
     current_distance = th.distance(curLoc, self.last_position)
     self.cumulative_distance += current_distance
     self.last_position = curLoc
-    rospy.logwarn("Update distance traveled to %s"%self.cumulative_distance)
+    #rospy.logwarn("Update distance traveled to %s"%self.cumulative_distance)
 
   def start(self):
     self.is_active = True
