@@ -32,8 +32,8 @@ def publish_poses(poseFile, pose_topic):
   starttime = rospy.Time.now().to_sec() - 2.5 # skip the first chunk of time
   slowdown_factor = 5
   lasttime = pos_list[-1,0] * slowdown_factor # in seconds
-  # only run the first 2.5/4 of the trajectory
-  lasttime = lasttime  * 2.5/4.0
+  # only run the first 2.8/4 of the trajectory
+  lasttime = lasttime  * 2.8/4.0
   curTime = rospy.Time.now().to_sec() - starttime
   target_pub = rospy.Publisher(pose_topic, Pose, queue_size=10)
   pos_pub = rospy.Publisher("/target_pose", PoseStamped, queue_size=10)
