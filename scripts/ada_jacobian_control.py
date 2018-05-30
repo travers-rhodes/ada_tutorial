@@ -67,13 +67,15 @@ class AdaJacobianControl():
     curtrans = self.manip.GetEndEffectorTransform()
     curCartLoc = curtrans[0:3,3]
     quat_dist = th.quat_distance(t3d.quaternions.mat2quat(curtrans[0:3,0:3]), endQuat)
+    diffTrans = th.distance(curCartLoc, endLoc)
     #rospy.logwarn("quat_dist is %s"%quat_dist)
     # don't do anything if close enough to target
-    if (th.distance(curCartLoc, endLoc) < self.transEpsilon and
+    if (diffTrans < self.transEpsilon and
        # quat_distance is between 0 and 1
        quat_dist < self.quatEpsilon):
       # no matter what, be sure to publish the current location before exiting this function
       self.publish_current_point()
+      self.distance_pub.publish(Float64(diffTrans))
       return
     pseudoEndLoc = self.get_pseudo_endLoc(curCartLoc, endLoc)
     self.make_step_to_pseudotarget(pseudoEndLoc, endQuat)

@@ -96,6 +96,7 @@ class MoveToMouthStateTransitionLogic(TransitionLogic):
     rospy.logwarn("Moving to mouth, judging completion by distance to mouth")
     r = rospy.Rate(10)
     epsilon_to_mouth = 0.01
+    rospy.sleep(3) # every move should take at least 3 seconds
     while self.distance_to_goal is None or self.distance_to_goal > epsilon_to_mouth:
       r.sleep()
     return State.MOVE_TO_SCALE
@@ -105,8 +106,7 @@ class MoveToMouthStateTransitionLogic(TransitionLogic):
     # this way we're sure our signal isn't reading the distance
     # to the previous goal
     rospy.logwarn("Distance to goal is %s"%message.data)
-    if (rospy.Time.now() - self.start_time).to_sec() > 1:
-      self.distance_to_goal = message.data
+    self.distance_to_goal = message.data
 
 
 class MoveToScaleStateTransitionLogic(TransitionLogic):
@@ -169,7 +169,8 @@ class MoveBackToMouthStateTransitionLogic(TransitionLogic):
   def wait_and_return_next_state(self):
     rospy.logwarn("Moving to mouth, judging completion by distance to mouth")
     r = rospy.Rate(10)
-    epsilon_to_mouth = 0.05
+    epsilon_to_mouth = 0.01
+    rospy.sleep(3) #wait three seconds before deciding that we've arrived
     while self.distance_to_goal is None or self.distance_to_goal > epsilon_to_mouth:
       r.sleep()
     return State.MOVE_TO_PLATE

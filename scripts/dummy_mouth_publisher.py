@@ -21,14 +21,15 @@ radius = 0
 
 poses = [[ x_dist + radius * np.sin(t), y_dist + radius * np.cos(t), z_dist] for t in times]
 
-for pose in poses+poses+poses:
-  mesg = Point(pose[0], pose[1], pose[2])
-  h = Header()
-  h.stamp = rospy.Time.now()
-  h.frame_id = "camera_rgb_optical_frame"
-  mesgStamped = PointStamped(h,mesg)
-  pub.publish(mesg)
-  pubStamped.publish(mesgStamped)
-  rospy.sleep(1)
+while True:
+  for pose in poses:
+    mesg = Point(pose[0], pose[1], pose[2])
+    h = Header()
+    h.stamp = rospy.Time.now()
+    h.frame_id = "camera_rgb_optical_frame"
+    mesgStamped = PointStamped(h,mesg)
+    pub.publish(mesg)
+    pubStamped.publish(mesgStamped)
+    rospy.sleep(1)
 
 

@@ -14,6 +14,8 @@ from geometry_msgs.msg import Quaternion
 
 class SpoonFeeder:
   def __init__(self):
+    # set seed for slightly more reproducibility
+    np.random.seed(30)
     self.defaultQuat = Quaternion(0.5, 0.5, 0.5, 0.5)
     self.tracker = tracker.TrackerInterface(self.defaultQuat)
     self.distance_tracker = measure_distance_traveled.TrackDistance()
@@ -68,10 +70,11 @@ class SpoonFeeder:
     elif self.state == State.WAIT_FOR_WEIGHT_INPUT:
       # this is very naughty blocking code, but it's time to start running experiments
       # and blocking code here won't hurt anyone
-      print("Please input the current weight on the scale:")
-      scale_weight = raw_input()
-      with open(self.results_file, "a") as f:
-        f.write("%s, %s, %s\n"%(rospy.Time.now().to_sec(), scale_weight, self.distance_tracker.cumulative_distance))
+      if True:
+        print("Please input the current weight on the scale:")
+        scale_weight = raw_input()
+        with open(self.results_file, "a") as f:
+          f.write("%s, %s, %s\n"%(rospy.Time.now().to_sec(), scale_weight, self.distance_tracker.cumulative_distance))
     elif self.state == State.MOVE_BACK_TO_MOUTH:
       mouth_point_topic = "/DO/inferenceOut/Point"
       self.tracker.start_updating_target_to_point(mouth_point_topic)
