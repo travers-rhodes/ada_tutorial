@@ -60,10 +60,10 @@ class SpoonFeeder:
       self.tracker.start_updating_target_to_point(mouth_point_topic)
     elif self.state == State.MOVE_TO_SCALE: 
       self.distance_tracker.stop()
-      self.tracker.start_tracking_fixed_target([0.3,-0.1,0.1])
+      self.tracker.start_tracking_fixed_target([0.5,-0.1,0.1])
     elif self.state == State.DUMP_ON_SCALE:
       self.distance_tracker.stop()
-      self.tracker.start_updating_target_to_pose(self.play_trajectory_topic,[0.1, 0.2, 0])
+      self.tracker.start_updating_target_to_pose(self.play_trajectory_topic,[0.1, 0.2, 0.03])
       self._play_trajectory(String(self.play_trajectory_topic))
     elif self.state == State.WAIT_FOR_WEIGHT_INPUT:
       # this is very naughty blocking code, but it's time to start running experiments
