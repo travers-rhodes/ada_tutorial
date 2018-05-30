@@ -44,6 +44,8 @@ class CameraCalibration:
       
       self.camera_to_robot = np.concatenate((np.concatenate((rotation,translation), axis=1),
                                      [[ 0, 0, 0, 1]]))
+      # switch to identity between camera and robot
+      self.camera_to_robot = np.eye(4)
     self.br = tf.TransformBroadcaster()
     rospy.logwarn("camera calibration initialized")
     

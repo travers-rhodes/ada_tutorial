@@ -13,11 +13,13 @@ pubStamped = rospy.Publisher(point_stamped_topic, PointStamped, queue_size=10)
 h = Header()
 h.stamp = rospy.Time.now()
 times = np.array(range(100))
-x_dist = 0.0
-y_dist = 0.095
-z_dist = 1.05
+# note that on this branch these are robot coordinates
+x_dist = 0.50
+y_dist = 0.15
+z_dist = 0.30 
+radius = 0
 
-poses = [[ x_dist + 0.1 * np.sin(t), y_dist + 0.1 * np.cos(t), z_dist] for t in times]
+poses = [[ x_dist + radius * np.sin(t), y_dist + radius * np.cos(t), z_dist] for t in times]
 
 for pose in poses+poses+poses:
   mesg = Point(pose[0], pose[1], pose[2])
@@ -27,6 +29,6 @@ for pose in poses+poses+poses:
   mesgStamped = PointStamped(h,mesg)
   pub.publish(mesg)
   pubStamped.publish(mesgStamped)
-  rospy.sleep(4)
+  rospy.sleep(1)
 
 

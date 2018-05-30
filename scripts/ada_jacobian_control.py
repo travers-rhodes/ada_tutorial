@@ -10,7 +10,8 @@ import adapy
 
 import transform_helpers as th
 import transforms3d as t3d
-from std_msgs.msg import Float64
+from std_msgs.msg import Header, Float64
+from geometry_msgs.msg import Point, PointStamped
  
 class AdaJacobianControl():
   def __init__(self, args, endEffName="Spoon"): 
@@ -22,12 +23,13 @@ class AdaJacobianControl():
     # how far can the end-effector move on each step
     self.transStepSize = 0.05
     self.angleStepSize = 0.1
-    self.transEpsilon = 0.001
+    self.transEpsilon = 0.005
     # this one's a weird number, but it's a measure of how far off the rotation can get before we try to correct
     self.quatEpsilon = 0.001
     # what is the largest number of radians we allow a motor to rotate in each linear step
     self.max_rotation_per_step = 0.4
     self.distance_pub = rospy.Publisher("/distance_to_target", Float64, queue_size=10)
+    self.cur_loc_pub = rospy.Publisher("/current_location", PointStamped, queue_size=10)
     ###
     ### Initialize robot
     ###
@@ -70,9 +72,12 @@ class AdaJacobianControl():
     if (th.distance(curCartLoc, endLoc) < self.transEpsilon and
        # quat_distance is between 0 and 1
        quat_dist < self.quatEpsilon):
+      # no matter what, be sure to publish the current location before exiting this function
+      self.publish_current_point()
       return
     pseudoEndLoc = self.get_pseudo_endLoc(curCartLoc, endLoc)
     self.make_step_to_pseudotarget(pseudoEndLoc, endQuat)
+    self.publish_current_point()
  
   def make_step_to_pseudotarget(self, endLoc, endQuat):
     with self.env:
@@ -97,8 +102,9 @@ class AdaJacobianControl():
       desMaxChange = self.max_rotation_per_step
       curMaxChange = max(abs(step))
       if curMaxChange > desMaxChange:
-        rospy.logwarn("one of the joints was going too fast, so slowing motion")
+        rospy.logwarn("motion is currently %s which is too fast" % step)
         step = step*desMaxChange/curMaxChange
+        rospy.logwarn("one of the joints was going too fast, so slowing motion to %s" % step)
       if (np.any((curLoc + step) < self.joint_min) or 
           np.any((curLoc + step) > self.joint_max)):
         rospy.logwarn("The joint limits would have been exceeded, so not taking any step. Requested joints: %s, Joint minimum bounds: %s, Joint maximum bounds %s"%(curLoc + step, self.joint_min, self.joint_max))
@@ -110,7 +116,7 @@ class AdaJacobianControl():
   # then you should stay away from the pivot point (increase your x) 
   def get_pseudo_endLoc(self, curCartLoc, endLoc):
     #rospy.logwarn("CURRENT POSITION is %s" % curCartLoc)
-    breaks = [-0.15, -0.07, 0, 0.07, 0.15]
+    breaks = []#for now, don't do this waypoint nonsense [-0.15, -0.07, 0, 0.07, 0.15]
     lenMinusOne = len(breaks) - 1
     pseudoEndLoc = np.array(endLoc)
     for i in range(lenMinusOne):
@@ -132,3 +138,11 @@ class AdaJacobianControl():
     traj.Insert(1,goal_joint_values)
     openravepy.planningutils.RetimeActiveDOFTrajectory(traj,self.robot)#,hastimestamps=False,maxvelmult=1,plannername='ParabolicTrajectoryRetimer')
     return traj
+
+  def publish_current_point(self):
+    curtrans = self.manip.GetEndEffectorTransform()
+    curCartLoc = curtrans[0:3,3]
+    header = Header()
+    header.stamp = rospy.Time.now()
+    point = Point(curCartLoc[0], curCartLoc[1], curCartLoc[2])
+    self.cur_loc_pub.publish(header, point)
