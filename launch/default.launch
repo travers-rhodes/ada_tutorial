@@ -1,7 +1,7 @@
 <launch>
   <!-- start up the camera -->
   <include file="$(find ueye_cam)/launch/xs_bayer_rggb.launch"/>
-  <node name="spoon_service" pkg="spoon_perception" type="perception_node.py"/>
+  <node name="spoon_service" pkg="spoon_perception" type="dummy_perception_node.py"/>
   <!--<node name="fake_spoon_service" pkg="ada_tutorial" type="fake_spoon_perception_service.py"/>-->
 
   <arg name="track_pose_server_flags" default="-s -v"/>
