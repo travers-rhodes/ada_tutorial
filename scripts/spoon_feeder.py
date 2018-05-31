@@ -51,8 +51,8 @@ class SpoonFeeder:
     elif self.state == State.PICK_UP_FOOD:
       # distance_tracker.start() is a projection so it's fine to call it more than once
       self.distance_tracker.start()
-      self.xoffset = 0.03#np.random.uniform() * 0.06
-      self.yoffset = 0.015#np.random.uniform() * 0.03
+      self.xoffset = np.random.uniform() * 0.06 #0.03
+      self.yoffset = np.random.uniform() * 0.03 #0.015
       #self.zoffset = -np.random.uniform() * 0.02
       self.zoffset = -0.03
       self.tracker.start_updating_target_to_pose(self.play_trajectory_topic,[self.xoffset, self.yoffset, self.zoffset])
@@ -71,7 +71,8 @@ class SpoonFeeder:
       # this is very naughty blocking code, but it's time to start running experiments
       # and blocking code here won't hurt anyone
       if True:
-        print("Please input the current weight on the scale:")
+        rospy.logwarn("You have traveled %s kilometers."% self.distance_tracker.cumulative_distance)
+        rospy.logwarn("Please input the current weight on the scale:")
         scale_weight = raw_input()
         with open(self.results_file, "a") as f:
           f.write("%s, %s, %s\n"%(rospy.Time.now().to_sec(), scale_weight, self.distance_tracker.cumulative_distance))

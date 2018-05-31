@@ -28,7 +28,7 @@ class TrackPoseService:
       except Exception as e:
         rospy.logerr(e)
         # we don't want this service to ever actually throw errors and fail out
-        raise
+        #raise
       # We don't need special code to allow any callbacks to run, in case the user has updated the location
       # since in rospy, callbacks are always called in separate threads 
       # however, since sometimes the loop is a no-op, we add a sleep to keep it from going faster than 10hz
