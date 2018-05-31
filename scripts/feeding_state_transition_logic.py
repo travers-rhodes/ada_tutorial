@@ -160,6 +160,7 @@ class MoveBackToMouthStateTransitionLogic(TransitionLogic):
   def __enter__(self):
     self.distance_to_goal = None
     self.start_time = rospy.Time.now()
+    self._check_spoon = rospy.ServiceProxy(object_in_spoon_service_name, ObjectSpoon)
     self.listenForSuccess = rospy.Subscriber(distance_to_goal_topic, Float64, self.update_distance_to_goal)
     return self
   
@@ -171,6 +172,8 @@ class MoveBackToMouthStateTransitionLogic(TransitionLogic):
     r = rospy.Rate(10)
     epsilon_to_mouth = 0.01
     rospy.sleep(3) #wait three seconds before deciding that we've arrived
+    # for alexandre's dummy code, take another photo here
+    self._check_spoon()
     while self.distance_to_goal is None or self.distance_to_goal > epsilon_to_mouth:
       r.sleep()
     return State.MOVE_TO_PLATE
