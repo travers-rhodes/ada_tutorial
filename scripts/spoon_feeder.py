@@ -6,7 +6,8 @@ from threading import Thread
 
 import tracker_interface as tracker
 import measure_distance_traveled 
-from feeding_state_transition_logic import transitionLogicDictionary, State
+# last_hist_corr and last_file_name are super hacky ways to remember the info about most recent images taken
+from feeding_state_transition_logic import transitionLogicDictionary, State, mostRecentImage
 from ada_tutorial.srv import PlayTrajectory
 from std_msgs.msg import String
 from geometry_msgs.msg import Quaternion
@@ -76,7 +77,8 @@ class SpoonFeeder:
         rospy.logwarn("Please input the current weight on the scale:")
         scale_weight = raw_input()
         with open(self.results_file, "a") as f:
-          f.write("%s, %s, %s\n"%(rospy.Time.now().to_sec(), scale_weight, self.distance_tracker.cumulative_distance))
+          # pulling these static variables from the feeding_state_transition module is also very naughty
+          f.write("%s, %s, %s, %s, %s\n"%(rospy.Time.now().to_sec(), scale_weight, self.distance_tracker.cumulative_distance, mostRecentImage.last_hist_corr, mostRecentImage.last_file_name))
     elif self.state == State.MOVE_BACK_TO_MOUTH:
       mouth_point_topic = "/DO/inferenceOut/Point"
       self.tracker.start_updating_target_to_point(mouth_point_topic)

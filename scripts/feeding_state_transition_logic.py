@@ -2,7 +2,7 @@ import rospy
 from enum import Enum
 
 from std_msgs.msg import Bool, Float64
-from ada_tutorial.srv import ObjectSpoon
+from spoon_perception.srv import ObjectSpoon
 
 class State(Enum):
   MOVE_TO_PLATE = 1
@@ -17,6 +17,16 @@ distance_to_goal_topic = "/distance_to_target" # std_msgs/Float64
 head_moving_topic = "/head_moving" # std_msgs/Bool
 head_not_moving_topic = "/head_not_moving" # std_msgs/Bool
 food_acquired_topic = "/food_acquired" # std_msgs/Bool
+
+hist_corr_threshold = 0.5
+
+# hacky way to save some state variables between calls to different methods
+class MostRecentImage:
+  def __init__(self):
+    self.last_hist_corr = None
+    self.last_file_name = None
+
+mostRecentImage = MostRecentImage()
 
 object_in_spoon_service_name = "detect_object_spoon" #ObjectSpoon.srv
 
@@ -75,8 +85,10 @@ class PickUpStateTransitionLogic(TransitionLogic):
     while not self.food_acquired:
       r.sleep()
     check_spoon_response = self._check_spoon()
-    if check_spoon_response.object_present:
-      return State.MOVE_TO_MOUTH
+    if check_spoon_response.histCorr < hist_corr_threshold:
+      mostRecentImage.last_hist_corr = check_spoon_response.histCorr
+      mostRecentImage.last_file_name = check_spoon_response.imagePath
+      return State.MOVE_TO_SCALE
     return State.PICK_UP_FOOD
   
   def update_food_acquired(self, message):
@@ -154,13 +166,12 @@ class DumpOnScaleStateTransitionLogic(TransitionLogic):
 
 class WaitForWeightInputStateTransitionLogic(TransitionLogic):
   def wait_and_return_next_state(self): 
-    return State.MOVE_BACK_TO_MOUTH
+    return State.MOVE_TO_PLATE
 
 class MoveBackToMouthStateTransitionLogic(TransitionLogic):
   def __enter__(self):
     self.distance_to_goal = None
     self.start_time = rospy.Time.now()
-    self._check_spoon = rospy.ServiceProxy(object_in_spoon_service_name, ObjectSpoon)
     self.listenForSuccess = rospy.Subscriber(distance_to_goal_topic, Float64, self.update_distance_to_goal)
     return self
   
@@ -172,8 +183,6 @@ class MoveBackToMouthStateTransitionLogic(TransitionLogic):
     r = rospy.Rate(10)
     epsilon_to_mouth = 0.01
     rospy.sleep(3) #wait three seconds before deciding that we've arrived
-    # for alexandre's dummy code, take another photo here
-    self._check_spoon()
     while self.distance_to_goal is None or self.distance_to_goal > epsilon_to_mouth:
       r.sleep()
     return State.MOVE_TO_PLATE
