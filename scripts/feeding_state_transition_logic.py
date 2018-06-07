@@ -25,6 +25,7 @@ class MostRecentImage:
   def __init__(self):
     self.last_hist_corr = None
     self.last_file_name = None
+    self.number_scoops_total = 0
 
 mostRecentImage = MostRecentImage()
 
@@ -85,6 +86,7 @@ class PickUpStateTransitionLogic(TransitionLogic):
     while not self.food_acquired:
       r.sleep()
     check_spoon_response = self._check_spoon()
+    mostRecentImage.number_scoops_total += 1
     if check_spoon_response.histCorr < hist_corr_threshold:
       mostRecentImage.last_hist_corr = check_spoon_response.histCorr
       mostRecentImage.last_file_name = check_spoon_response.imagePath

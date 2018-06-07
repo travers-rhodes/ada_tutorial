@@ -78,7 +78,7 @@ class SpoonFeeder:
         scale_weight = raw_input()
         with open(self.results_file, "a") as f:
           # pulling these static variables from the feeding_state_transition module is also very naughty
-          f.write("%s, %s, %s, %s, %s\n"%(rospy.Time.now().to_sec(), scale_weight, self.distance_tracker.cumulative_distance, mostRecentImage.last_hist_corr, mostRecentImage.last_file_name))
+          f.write("%s, %s, %s, %s, %s, %s\n"%(rospy.Time.now().to_sec(), scale_weight, self.distance_tracker.cumulative_distance, mostRecentImage.number_scoops_total, mostRecentImage.last_hist_corr, mostRecentImage.last_file_name))
     elif self.state == State.MOVE_BACK_TO_MOUTH:
       mouth_point_topic = "/DO/inferenceOut/Point"
       self.tracker.start_updating_target_to_point(mouth_point_topic)
