@@ -18,7 +18,7 @@ head_moving_topic = "/head_moving" # std_msgs/Bool
 head_not_moving_topic = "/head_not_moving" # std_msgs/Bool
 food_acquired_topic = "/food_acquired" # std_msgs/Bool
 
-hist_corr_threshold = 1
+hist_corr_threshold = 0.5
 
 # hacky way to save some state variables between calls to different methods
 class MostRecentImage:
