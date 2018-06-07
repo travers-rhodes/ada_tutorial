@@ -1,0 +1,8 @@
+1528397268.03, 6.3, 0.33760383936, 1, 0.206461055107, /home/traversr/harp_ws/src/ada_tutorial/spoon_data/07_06_18__14_46_51/image_0.png
+1528397346.37, 10.3, 1.53320538002, 4, 0.347100299024, /home/traversr/harp_ws/src/ada_tutorial/spoon_data/07_06_18__14_46_51/image_4.png
+1528397391.97, 12.8, 2.18061603724, 5, 0.498290662292, /home/traversr/harp_ws/src/ada_tutorial/spoon_data/07_06_18__14_46_51/image_6.png
+1528397486.96, 16.6, 3.64560832982, 9, 0.391677006884, /home/traversr/harp_ws/src/ada_tutorial/spoon_data/07_06_18__14_46_51/image_11.png
+1528397596.8, 18.6, 5.38395091456, 14, 0.479612559141, /home/traversr/harp_ws/src/ada_tutorial/spoon_data/07_06_18__14_46_51/image_17.png
+1528397932.69, 21.5, 10.6449708568, 32, 0.45242996819, /home/traversr/harp_ws/src/ada_tutorial/spoon_data/07_06_18__14_46_51/image_36.png
+1528398126.15, 25.4, 13.7423544749, 42, 0.464588394436, /home/traversr/harp_ws/src/ada_tutorial/spoon_data/07_06_18__14_46_51/image_47.png
+1528398325.41, 28.1, 16.825338272, 52, 0.461856727873, /home/traversr/harp_ws/src/ada_tutorial/spoon_data/07_06_18__14_46_51/image_58.png
