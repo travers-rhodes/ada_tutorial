@@ -56,7 +56,7 @@ class SpoonFeeder:
       self.xoffset = 0.03 #np.random.uniform() * 0.06 #0.03
       self.yoffset = 0.015 #np.random.uniform() * 0.03 #0.015
       #self.zoffset = -np.random.uniform() * 0.02
-      self.zoffset = -0.03
+      self.zoffset = -0.04
       self.tracker.start_updating_target_to_pose(self.play_trajectory_topic,[self.xoffset, self.yoffset, self.zoffset])
       self._play_trajectory(String(self.play_trajectory_topic))
     elif self.state == State.MOVE_TO_MOUTH:
