@@ -1,0 +1,4 @@
+1528431282.75, 5.7, 0.342280327443, 1, 0.335811416027, /home/traversr/harp_ws/src/ada_tutorial/spoon_data/08_06_18__00_13_01/image_0.png
+1528431342.4, 9.5, 1.26227835521, 3, 0.39004490235, /home/traversr/harp_ws/src/ada_tutorial/spoon_data/08_06_18__00_13_01/image_3.png
+1528431441.09, 11.9, 2.73915871594, 7, 0.473641430865, /home/traversr/harp_ws/src/ada_tutorial/spoon_data/08_06_18__00_13_01/image_8.png
+1528431684.76, 14.0, 6.66029308206, 20, 0.42694844515, /home/traversr/harp_ws/src/ada_tutorial/spoon_data/08_06_18__00_13_01/image_22.png
