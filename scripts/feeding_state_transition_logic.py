@@ -91,7 +91,6 @@ class PickUpStateTransitionLogic(TransitionLogic):
       #mostRecentImage.last_hist_corr = check_spoon_response.histCorr
       #mostRecentImage.last_file_name = check_spoon_response.imagePath
       #return State.MOVE_TO_SCALE
-    return State.MOVE_TO_MOUTH
     return State.PICK_UP_FOOD
   
   def update_food_acquired(self, message):
