@@ -51,7 +51,7 @@ class MoveToPlateStateTransitionLogic(TransitionLogic):
     self.distance_to_goal = None
     self.listenForSuccess = rospy.Subscriber(distance_to_goal_topic, Float64, self.update_distance_to_goal)
     # before camera is calibrated 
-    #rospy.wait_for_service(object_in_spoon_service_name)
+    rospy.wait_for_service(object_in_spoon_service_name)
     return self
     
   def __exit__(self, exc_type, exc_value, traceback):
@@ -72,9 +72,9 @@ class PickUpStateTransitionLogic(TransitionLogic):
   def __enter__(self):
     self.food_acquired = False
     self.listenForFoodAcquired = rospy.Subscriber(food_acquired_topic, Bool, self.update_food_acquired)
-    #rospy.logwarn("Waiting for %s service to come up" % object_in_spoon_service_name)
-    #rospy.wait_for_service(object_in_spoon_service_name)
-    #self._check_spoon = rospy.ServiceProxy(object_in_spoon_service_name, ObjectSpoon)
+    rospy.logwarn("Waiting for %s service to come up" % object_in_spoon_service_name)
+    rospy.wait_for_service(object_in_spoon_service_name)
+    self._check_spoon = rospy.ServiceProxy(object_in_spoon_service_name, ObjectSpoon)
     return self
 
   def __exit__(self, exc_type, exc_value, traceback):
@@ -85,12 +85,12 @@ class PickUpStateTransitionLogic(TransitionLogic):
     r = rospy.Rate(10) # 10Hz
     while not self.food_acquired:
       r.sleep()
-    #check_spoon_response = self._check_spoon()
+    check_spoon_response = self._check_spoon()
     mostRecentImage.number_scoops_total += 1
-    #if check_spoon_response.histCorr < hist_corr_threshold:
-      #mostRecentImage.last_hist_corr = check_spoon_response.histCorr
-      #mostRecentImage.last_file_name = check_spoon_response.imagePath
-      #return State.MOVE_TO_SCALE
+    if check_spoon_response.histCorr < hist_corr_threshold:
+      mostRecentImage.last_hist_corr = check_spoon_response.histCorr
+      mostRecentImage.last_file_name = check_spoon_response.imagePath
+      return State.MOVE_TO_SCALE
     return State.PICK_UP_FOOD
   
   def update_food_acquired(self, message):
@@ -113,7 +113,7 @@ class MoveToMouthStateTransitionLogic(TransitionLogic):
     rospy.sleep(3) # every move should take at least 3 seconds
     while self.distance_to_goal is None or self.distance_to_goal > epsilon_to_mouth:
       r.sleep()
-    return State.MOVE_TO_PLATE 
+    return State.MOVE_TO_SCALE
 
   def update_distance_to_goal(self, message):
     # you aren't allowed to get to the goal in less than one second
@@ -149,7 +149,7 @@ class DumpOnScaleStateTransitionLogic(TransitionLogic):
     # this listenForFoodAcquired just means that that recorded motion has finished playing
     self.listenForFoodAcquired = rospy.Subscriber(food_acquired_topic, Bool, self.update_food_acquired)
     # this service call actually checks if there is food in the spoon
-    #self._check_spoon = rospy.ServiceProxy(object_in_spoon_service_name, ObjectSpoon)
+    self._check_spoon = rospy.ServiceProxy(object_in_spoon_service_name, ObjectSpoon)
     return self
 
   def __exit__(self, exc_type, exc_value, traceback):
@@ -160,7 +160,7 @@ class DumpOnScaleStateTransitionLogic(TransitionLogic):
     r = rospy.Rate(10) # 10Hz
     while not self.food_acquired:
       r.sleep()
-    #check_spoon_response = self._check_spoon()
+    check_spoon_response = self._check_spoon()
     return State.WAIT_FOR_WEIGHT_INPUT
   
   def update_food_acquired(self, message):

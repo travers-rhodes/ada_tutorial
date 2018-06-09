@@ -15,7 +15,6 @@ from geometry_msgs.msg import Quaternion
 
 class SpoonFeeder:
   def __init__(self):
-    self.last_distance = 0
     # set seed for slightly more reproducibility
     np.random.seed(30)
     self.defaultQuat = Quaternion(0.5, 0.5, 0.5, 0.5)
@@ -30,7 +29,6 @@ class SpoonFeeder:
     self.is_first_move_to_plate = True
     rospack = rospkg.RosPack()
     self.results_file = rospack.get_path("ada_tutorial") + "/scale_weights.txt"
-    self.results_file = rospack.get_path("ada_tutorial") + "/distance_logger.txt"
     self._set_state(State.MOVE_TO_PLATE)
 
     while not rospy.is_shutdown():
@@ -51,11 +49,6 @@ class SpoonFeeder:
         self.distance_tracker.start()
       self.tracker.start_tracking_fixed_target([0.3,-0.3,0.1])
       self.is_first_move_to_plate = False
-      with open(self.results_file, "a") as f:
-     
-        # pulling these static variables from the feeding_state_transition module is also very naughty
-        f.write("%s, %s,\n"%("moveToPlate",self.distance_tracker.cumulative_distance - self.last_distance))
-        self.last_distance = self.distance_tracker.cumulative_distance
     elif self.state == State.PICK_UP_FOOD:
       rospy.logwarn("You have traveled %s kilometers."% self.distance_tracker.cumulative_distance)
       # distance_tracker.start() is a projection so it's fine to call it more than once
@@ -66,57 +59,31 @@ class SpoonFeeder:
       self.zoffset = -0.04
       self.tracker.start_updating_target_to_pose(self.play_trajectory_topic,[self.xoffset, self.yoffset, self.zoffset])
       self._play_trajectory(String(self.play_trajectory_topic))
-      with open(self.results_file, "a") as f:
-     
-        # pulling these static variables from the feeding_state_transition module is also very naughty
-        f.write("%s, %s,\n"%("pickUpFood",self.distance_tracker.cumulative_distance - self.last_distance))
-        self.last_distance = self.distance_tracker.cumulative_distance
     elif self.state == State.MOVE_TO_MOUTH:
       mouth_point_topic = "/DO/inferenceOut/Point"
       self.tracker.start_updating_target_to_point(mouth_point_topic)
-      with open(self.results_file, "a") as f:
-     
-        # pulling these static variables from the feeding_state_transition module is also very naughty
-        f.write("%s, %s,\n"%("moveToMouth",self.distance_tracker.cumulative_distance - self.last_distance))
-        self.last_distance = self.distance_tracker.cumulative_distance
     elif self.state == State.MOVE_TO_SCALE: 
       self.distance_tracker.stop()
       self.tracker.start_tracking_fixed_target([0.5,-0.1,0.1])
-      with open(self.results_file, "a") as f:
-     
-        # pulling these static variables from the feeding_state_transition module is also very naughty
-        f.write("%s, %s,\n"%("moveToScale",self.distance_tracker.cumulative_distance - self.last_distance))
-        self.last_distance = self.distance_tracker.cumulative_distance
     elif self.state == State.DUMP_ON_SCALE:
       self.distance_tracker.stop()
       self.tracker.start_updating_target_to_pose(self.play_trajectory_topic,[0.1, 0.2, 0.03])
       self._play_trajectory(String(self.play_trajectory_topic))
-      with open(self.results_file, "a") as f:
-     
-        # pulling these static variables from the feeding_state_transition module is also very naughty
-        f.write("%s, %s,\n"%("dumpOnScale",self.distance_tracker.cumulative_distance - self.last_distance))
-        self.last_distance = self.distance_tracker.cumulative_distance
     elif self.state == State.WAIT_FOR_WEIGHT_INPUT:
       # this is very naughty blocking code, but it's time to start running experiments
       # and blocking code here won't hurt anyone
       if True:
         rospy.logwarn("You have traveled %s kilometers."% self.distance_tracker.cumulative_distance)
         rospy.logwarn("Please input the current weight on the scale:")
+        scale_weight = raw_input()
         with open(self.results_file, "a") as f:
-     
           # pulling these static variables from the feeding_state_transition module is also very naughty
-          f.write("%s, %s,\n"%("waitForWeight",self.distance_tracker.cumulative_distance - self.last_distance))
-          self.last_distance = self.distance_tracker.cumulative_distance
-        #scale_weight = raw_input()
-        #with open(self.results_file, "a") as f:
-          # pulling these static variables from the feeding_state_transition module is also very naughty
-        #  f.write("%s, %s, %s, %s, %s, %s\n"%(rospy.Time.now().to_sec(), scale_weight, self.distance_tracker.cumulative_distance, mostRecentImage.number_scoops_total, mostRecentImage.last_hist_corr, mostRecentImage.last_file_name))
+          f.write("%s, %s, %s, %s, %s, %s\n"%(rospy.Time.now().to_sec(), scale_weight, self.distance_tracker.cumulative_distance, mostRecentImage.number_scoops_total, mostRecentImage.last_hist_corr, mostRecentImage.last_file_name))
     elif self.state == State.MOVE_BACK_TO_MOUTH:
       mouth_point_topic = "/DO/inferenceOut/Point"
       self.tracker.start_updating_target_to_point(mouth_point_topic)
     else:
       rospy.logerr("The state %s is not known"%self.state)
-    self.distance_tracker.start()
 
 
 if __name__=="__main__":
