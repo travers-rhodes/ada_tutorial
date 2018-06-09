@@ -1,7 +1,6 @@
 *.pyc
 data/
 *.jpg
-*.png
 *.zip
 plots/.ipynb_checkpoints/
 spoon_data/
