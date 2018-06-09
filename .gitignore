@@ -4,3 +4,4 @@ data/
 *.png
 *.zip
 plots/.ipynb_checkpoints/
+spoon_data/

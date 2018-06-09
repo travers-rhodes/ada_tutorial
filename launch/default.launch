@@ -1,7 +1,7 @@
 <launch>
   <!-- start up the camera -->
-  <include file="$(find ueye_cam)/launch/xs_bayer_rggb.launch"/>
-  <node name="spoon_service" pkg="spoon_perception" type="perception_node.py"/>
+  <!--<include file="$(find ueye_cam)/launch/xs_bayer_rggb.launch"/>-->
+  <!--<node name="spoon_service" pkg="spoon_perception" type="perception_node.py"/>-->
 
   <arg name="track_pose_server_flags" default="-s -v"/>
   <arg name="simulate_mouth" default="false"/>
