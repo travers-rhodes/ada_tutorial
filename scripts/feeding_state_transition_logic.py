@@ -18,7 +18,7 @@ head_moving_topic = "/head_moving" # std_msgs/Bool
 head_not_moving_topic = "/head_not_moving" # std_msgs/Bool
 food_acquired_topic = "/food_acquired" # std_msgs/Bool
 
-hist_corr_threshold = 1
+hist_corr_threshold = 0.7
 
 # hacky way to save some state variables between calls to different methods
 class MostRecentImage:
@@ -90,7 +90,7 @@ class PickUpStateTransitionLogic(TransitionLogic):
     if check_spoon_response.histCorr < hist_corr_threshold:
       mostRecentImage.last_hist_corr = check_spoon_response.histCorr
       mostRecentImage.last_file_name = check_spoon_response.imagePath
-      return State.MOVE_TO_SCALE
+      return State.MOVE_TO_MOUTH
     return State.PICK_UP_FOOD
   
   def update_food_acquired(self, message):
@@ -109,11 +109,11 @@ class MoveToMouthStateTransitionLogic(TransitionLogic):
   def wait_and_return_next_state(self):
     rospy.logwarn("Moving to mouth, judging completion by distance to mouth")
     r = rospy.Rate(10)
-    epsilon_to_mouth = 0.01
+    epsilon_to_mouth = 0.03
     rospy.sleep(3) # every move should take at least 3 seconds
     while self.distance_to_goal is None or self.distance_to_goal > epsilon_to_mouth:
       r.sleep()
-    return State.MOVE_TO_SCALE
+    return State.WAIT_FOR_WEIGHT_INPUT
 
   def update_distance_to_goal(self, message):
     # you aren't allowed to get to the goal in less than one second
@@ -168,6 +168,7 @@ class DumpOnScaleStateTransitionLogic(TransitionLogic):
 
 class WaitForWeightInputStateTransitionLogic(TransitionLogic):
   def wait_and_return_next_state(self): 
+    rospy.sleep(3)
     return State.MOVE_TO_PLATE
 
 class MoveBackToMouthStateTransitionLogic(TransitionLogic):
