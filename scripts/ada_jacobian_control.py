@@ -103,20 +103,20 @@ class AdaJacobianControl():
         diffTrans = diffTrans * stepScale
         diffRotAngle = diffRotAngle * stepScale 
         diff_cylindrical = diff_cylindrical * stepScale
-        rospy.logwarn("Translation was larger than transStepSize, so only going %f of the way"%stepScale)
+        #rospy.logwarn("Translation was larger than transStepSize, so only going %f of the way"%stepScale)
       if diffRotAngle > self.angleStepSize:
         angScale = self.angleStepSize / diffRotAngle
         diffTrans = diffTrans * angScale 
         diffRotAngle = diffRotAngle * angScale 
         diff_cylindrical = diff_cylindrical * angScale
-        rospy.logwarn("Rotation was larger than angleStepSize, so only going %f of the way"%angScale)
+        #rospy.logwarn("Rotation was larger than angleStepSize, so only going %f of the way"%angScale)
       step = th.least_squares_step(jac, angVelJac, diff_cylindrical, diffRotAxis * diffRotAngle) 
       desMaxChange = self.max_rotation_per_step
       curMaxChange = max(abs(step))
       if curMaxChange > desMaxChange:
-        rospy.logwarn("motion is currently %s which is too fast" % step)
+        #rospy.logwarn("motion is currently %s which is too fast" % step)
         step = step*desMaxChange/curMaxChange
-        rospy.logwarn("one of the joints was going too fast, so slowing motion to %s" % step)
+        #rospy.logwarn("one of the joints was going too fast, so slowing motion to %s" % step)
       if (np.any((curJointLoc + step) < self.joint_min) or 
           np.any((curJointLoc + step) > self.joint_max)):
         rospy.logwarn("The joint limits would have been exceeded, so not taking any step. Requested joints: %s, Joint minimum bounds: %s, Joint maximum bounds %s"%(curJointLoc + step, self.joint_min, self.joint_max))
