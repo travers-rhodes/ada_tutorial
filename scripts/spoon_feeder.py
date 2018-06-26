@@ -50,7 +50,7 @@ class SpoonFeeder:
       self.tracker.start_tracking_fixed_target([0.3,-0.3,0.1])
       self.is_first_move_to_plate = False
       #rospy.logwarn("Please clean off the spoon and press enter")
-      scale_weight = raw_input()
+      #scale_weight = raw_input()
     elif self.state == State.PICK_UP_FOOD:
       rospy.logwarn("You have traveled %s kilometers."% self.distance_tracker.cumulative_distance)
       # distance_tracker.start() is a projection so it's fine to call it more than once

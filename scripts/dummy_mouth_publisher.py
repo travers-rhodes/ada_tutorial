@@ -5,7 +5,7 @@ from std_msgs.msg import Header
 from geometry_msgs.msg import Point, PointStamped
 
 point_topic = "/DO/inferenceOut/Point"
-point_stamped_topic = point_topic + "Stamped"
+point_stamped_topic = "/DO/inferenceOut/StampedPoint"
 
 rospy.init_node("dummy_publisher")
 pub = rospy.Publisher(point_topic, Point, queue_size=10)
@@ -14,10 +14,10 @@ h = Header()
 h.stamp = rospy.Time.now()
 times = np.array(range(100))
 # note that on this branch these are robot coordinates
-x_dist = 0.50
-y_dist = 0.15
-z_dist = 0.30 
-radius = 0
+x_dist = -0.1
+y_dist = 0.0
+z_dist = 1.2
+radius = 0 
 
 poses = [[ x_dist + radius * np.sin(t), y_dist + radius * np.cos(t), z_dist] for t in times]
 

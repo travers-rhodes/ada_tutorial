@@ -2,7 +2,7 @@ import rospy
 from enum import Enum
 
 from std_msgs.msg import Bool, Float64
-from spoon_perception.srv import ObjectSpoon
+from spoon_perception.srv import ObjectSpoon, ObjectSpoonResponse
 
 class State(Enum):
   MOVE_TO_PLATE = 1
@@ -51,7 +51,8 @@ class MoveToPlateStateTransitionLogic(TransitionLogic):
     self.distance_to_goal = None
     self.listenForSuccess = rospy.Subscriber(distance_to_goal_topic, Float64, self.update_distance_to_goal)
     # before camera is calibrated 
-    rospy.wait_for_service(object_in_spoon_service_name)
+    #rospy.logwarn("Waiting for %s service to come up" % object_in_spoon_service_name)
+    #rospy.wait_for_service(object_in_spoon_service_name)
     return self
     
   def __exit__(self, exc_type, exc_value, traceback):
@@ -61,7 +62,8 @@ class MoveToPlateStateTransitionLogic(TransitionLogic):
     rospy.logwarn("Moving back to plate")
     r = rospy.Rate(10)
     epsilon_to_plate = 0.01
-    while (self.distance_to_goal is None or self.distance_to_goal > epsilon_to_plate):
+    while ((self.distance_to_goal is None or self.distance_to_goal > epsilon_to_plate)
+           and not self.distance_to_goal > 1000):
       r.sleep()
     return State.PICK_UP_FOOD 
   
@@ -72,9 +74,9 @@ class PickUpStateTransitionLogic(TransitionLogic):
   def __enter__(self):
     self.food_acquired = False
     self.listenForFoodAcquired = rospy.Subscriber(food_acquired_topic, Bool, self.update_food_acquired)
-    rospy.logwarn("Waiting for %s service to come up" % object_in_spoon_service_name)
-    rospy.wait_for_service(object_in_spoon_service_name)
-    self._check_spoon = rospy.ServiceProxy(object_in_spoon_service_name, ObjectSpoon)
+    #rospy.logwarn("Waiting for %s service to come up" % object_in_spoon_service_name)
+    #rospy.wait_for_service(object_in_spoon_service_name)
+    self._check_spoon = lambda:ObjectSpoonResponse(0,"dummy")#rospy.ServiceProxy(object_in_spoon_service_name, ObjectSpoon)
     return self
 
   def __exit__(self, exc_type, exc_value, traceback):
@@ -111,7 +113,8 @@ class MoveToMouthStateTransitionLogic(TransitionLogic):
     r = rospy.Rate(10)
     epsilon_to_mouth = 0.03
     rospy.sleep(3) # every move should take at least 3 seconds
-    while self.distance_to_goal is None or self.distance_to_goal > epsilon_to_mouth:
+    while ((self.distance_to_goal is None or self.distance_to_goal > epsilon_to_mouth)
+           and not self.distance_to_goal > 1000):
       r.sleep()
     return State.WAIT_FOR_WEIGHT_INPUT
 
@@ -136,7 +139,8 @@ class MoveToScaleStateTransitionLogic(TransitionLogic):
     rospy.logwarn("Moving back to plate")
     r = rospy.Rate(10)
     epsilon_to_plate = 0.05
-    while (self.distance_to_goal is None or self.distance_to_goal > epsilon_to_plate):
+    while ((self.distance_to_goal is None or self.distance_to_goal > epsilon_to_plate)
+           and not self.distance_to_goal > 1000):
       r.sleep()
     return State.DUMP_ON_SCALE
   
@@ -186,7 +190,8 @@ class MoveBackToMouthStateTransitionLogic(TransitionLogic):
     r = rospy.Rate(10)
     epsilon_to_mouth = 0.01
     rospy.sleep(3) #wait three seconds before deciding that we've arrived
-    while self.distance_to_goal is None or self.distance_to_goal > epsilon_to_mouth:
+    while ((self.distance_to_goal is None or self.distance_to_goal > epsilon_to_mouth)
+        and not self.distance_to_goal > 1000):
       r.sleep()
     return State.MOVE_TO_PLATE
   

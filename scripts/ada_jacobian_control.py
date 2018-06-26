@@ -78,45 +78,88 @@ class AdaJacobianControl():
       self.distance_pub.publish(Float64(diffTrans))
       return
     pseudoEndLoc = self.get_pseudo_endLoc(curCartLoc, endLoc)
-    self.make_step_to_pseudotarget(pseudoEndLoc, endQuat)
+    stepSuccessful = self.make_step_to_pseudotarget(pseudoEndLoc, endQuat)
+    if not stepSuccessful:
+      # publish a special coded message that means we hit joint constraints
+      self.distance_pub.publish(Float64(10000))
     self.publish_current_point()
+    
  
   def make_step_to_pseudotarget(self, endLoc, endQuat):
     with self.env:
       curtrans = self.manip.GetEndEffectorTransform()
       diffTrans, diffRotAxis, diffRotAngle = th.get_transform_difference_axis_angle(curtrans, endLoc, endQuat)
-      jac= self.manip.CalculateJacobian()
+      # diff_cylindrical is of the form dR, dTheta, dZ
+      # where R is sqrt(x^2 + y^2), theta is arctan2(y,x), and z is z
+      diff_cylindrical = th.get_cylindrical_point_translation(curtrans[0:3,3], endLoc)
+
+      jac= self.computeJacobianInCylindrical(curtrans[0:3,3])
       angVelJac = self.manip.CalculateAngularVelocityJacobian()
-      curLoc = self.robot.GetDOFValues(self.arm_indices)
+      curJointLoc = self.robot.GetDOFValues(self.arm_indices)
       transDist = th.distance(diffTrans,[0,0,0])
       self.distance_pub.publish(Float64(transDist))
       if transDist > self.transStepSize:
         stepScale = self.transStepSize / transDist
         diffTrans = diffTrans * stepScale
         diffRotAngle = diffRotAngle * stepScale 
+        diff_cylindrical = diff_cylindrical * stepScale
         rospy.logwarn("Translation was larger than transStepSize, so only going %f of the way"%stepScale)
       if diffRotAngle > self.angleStepSize:
         angScale = self.angleStepSize / diffRotAngle
         diffTrans = diffTrans * angScale 
         diffRotAngle = diffRotAngle * angScale 
+        diff_cylindrical = diff_cylindrical * angScale
         rospy.logwarn("Rotation was larger than angleStepSize, so only going %f of the way"%angScale)
-      step = th.least_squares_step(jac, angVelJac, diffTrans, diffRotAxis * diffRotAngle) 
+      step = th.least_squares_step(jac, angVelJac, diff_cylindrical, diffRotAxis * diffRotAngle) 
       desMaxChange = self.max_rotation_per_step
       curMaxChange = max(abs(step))
       if curMaxChange > desMaxChange:
         rospy.logwarn("motion is currently %s which is too fast" % step)
         step = step*desMaxChange/curMaxChange
         rospy.logwarn("one of the joints was going too fast, so slowing motion to %s" % step)
-      if (np.any((curLoc + step) < self.joint_min) or 
-          np.any((curLoc + step) > self.joint_max)):
-        rospy.logwarn("The joint limits would have been exceeded, so not taking any step. Requested joints: %s, Joint minimum bounds: %s, Joint maximum bounds %s"%(curLoc + step, self.joint_min, self.joint_max))
-        return
-      traj = self.create_two_point_trajectory(curLoc + step)
+      if (np.any((curJointLoc + step) < self.joint_min) or 
+          np.any((curJointLoc + step) > self.joint_max)):
+        rospy.logwarn("The joint limits would have been exceeded, so not taking any step. Requested joints: %s, Joint minimum bounds: %s, Joint maximum bounds %s"%(curJointLoc + step, self.joint_min, self.joint_max))
+        return False
+      traj = self.create_two_point_trajectory(curJointLoc + step)
     self.robot.ExecuteTrajectory(traj)
+    return True
+
+  # compute jacobian in cylindrical coords (dr, dtheta, dphi)
+  def computeJacobianInCylindrical(self, rectCoord):
+     cylToRectJacob = self.computeJacobFromCylToRect(rectCoord) 
+     cartesJacob = self.manip.CalculateJacobian()
+     cylJacob = cylToRectJacob.dot(cartesJacob)
+     return cylJacob
+
+  # compute jacobian from cyl to rectangular
+  def computeJacobFromCylToRect(self,rectCoord):
+     x = rectCoord[0]
+     y = rectCoord[1]
+     z = rectCoord[2]
+     # validated with http://www.wolframalpha.com/input/?i=d%2Fdx+arctan(y%2Fx)
+     xyr = np.sqrt(np.square(x) + np.square(y))
+     #yeah, yeah, yeah, this will cause massive problems if we are ever at exactly pi/2, pi, 0, etc. But I think it's worth it? We'll see!
+     # we define r = sqrt(x^2 + y^2)
+     # theta = arctan2(y,x)
+     # z = z
+     # and we compute
+     # dr/dx, dr/dy, dr/dz
+     # dtheta/dx, dtheta/dy
+     # dz/dx, dz/dy, dz/dz
+     cylJacob = np.array([[x/xyr, y/xyr, 0],
+                            [-y /np.square(xyr), x/ np.square(xyr), 0],
+                            [0,0,1]
+                            ])
+     return cylJacob
+
+
 
   # todo: clean this up. But in general, if you're moving large distances in y,
   # then you should stay away from the pivot point (increase your x) 
   def get_pseudo_endLoc(self, curCartLoc, endLoc):
+    # TURNING THIS OFF by short-circuiting here
+    return endLoc 
     #rospy.logwarn("CURRENT POSITION is %s" % curCartLoc)
     breaks = [-0.15, -0.07, 0, 0.07, 0.15]
     lenMinusOne = len(breaks) - 1
@@ -133,10 +176,10 @@ class AdaJacobianControl():
     return pseudoEndLoc
 
   def create_two_point_trajectory(self,goal_joint_values):
-    curLoc = self.robot.GetDOFValues(self.arm_indices)
+    curJointLoc = self.robot.GetDOFValues(self.arm_indices)
     traj = openravepy.RaveCreateTrajectory(self.env,'')
     traj.Init(self.robot.GetActiveConfigurationSpecification())
-    traj.Insert(0,curLoc)
+    traj.Insert(0,curJointLoc)
     traj.Insert(1,goal_joint_values)
     openravepy.planningutils.RetimeActiveDOFTrajectory(traj,self.robot)#,hastimestamps=False,maxvelmult=1,plannername='ParabolicTrajectoryRetimer')
     return traj

@@ -106,6 +106,29 @@ def least_squares_step(jac, angVelJac, diffTrans, diffAngular, minConstraint=-np
   #print(joints.success)
   #print(joints)
   return(joints)
+
+def get_cylindrical_point_translation(curLoc, endLoc):
+  curCyl = convert_rect_to_cyl(curLoc)
+  endCyl = convert_rect_to_cyl(endLoc)
+  dr = endCyl[0] - curCyl[0]
+  dtheta = endCyl[1] - curCyl[1]
+  dz = endCyl[2] - curCyl[2]
+  if dtheta > np.pi:
+    dtheta = dtheta - 2 * np.pi
+  if dtheta < -np.pi:
+    dtheta = dtheta + 2 * np.pi
+  return np.array([dr, dtheta, dz])
+    
+
+def convert_rect_to_cyl(curLoc):
+  x = curLoc[0]
+  y = curLoc[1]
+  z = curLoc[2]
+  r = np.sqrt(x**2 + y**2)
+  theta = np.arctan2(y, x)
+  z = z
+  return np.array([r,theta,z])
+  
   
 
 if __name__=="__main__":
@@ -126,6 +149,20 @@ if __name__=="__main__":
       return False
   
   class TestMethods(unittest.TestCase):
+    def test_get_cylindrical_point_translation(self):
+      self.assertTrue(numpy_are_equal(
+        get_cylindrical_point_translation(
+          np.array([0,1,0]), np.array([1,0,0])),
+        np.array([0,-np.pi/2,0])))
+      self.assertTrue(numpy_are_equal(
+        get_cylindrical_point_translation(
+          np.array([0,3,3]), np.array([1,0,4])),
+        np.array([-2,-np.pi/2,1])))
+      self.assertTrue(numpy_are_equal(
+        get_cylindrical_point_translation(
+          np.array([1,-1,-2]), np.array([1,1,2])),
+        np.array([0,np.pi/2,4])))
+      
     def test_least_squares_step(self):
       self.assertTrue(numpy_are_equal(least_squares_step([[1,0],[0,1],[0,0]], [[1,0],[0,1],[0,0]],[1,1,0],[1,1,0]),
                                       [1,1]))
