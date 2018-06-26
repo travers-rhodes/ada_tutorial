@@ -49,6 +49,8 @@ class SpoonFeeder:
         self.distance_tracker.start()
       self.tracker.start_tracking_fixed_target([0.3,-0.3,0.1])
       self.is_first_move_to_plate = False
+      #rospy.logwarn("Please clean off the spoon and press enter")
+      scale_weight = raw_input()
     elif self.state == State.PICK_UP_FOOD:
       rospy.logwarn("You have traveled %s kilometers."% self.distance_tracker.cumulative_distance)
       # distance_tracker.start() is a projection so it's fine to call it more than once
@@ -60,7 +62,7 @@ class SpoonFeeder:
       self.tracker.start_updating_target_to_pose(self.play_trajectory_topic,[self.xoffset, self.yoffset, self.zoffset])
       self._play_trajectory(String(self.play_trajectory_topic))
     elif self.state == State.MOVE_TO_MOUTH:
-      mouth_point_topic = "/DO/inferenceOut/Point"
+      mouth_point_topic = "/DO/inferenceOut/StampedPoint"
       self.tracker.start_updating_target_to_point(mouth_point_topic)
     elif self.state == State.MOVE_TO_SCALE: 
       self.distance_tracker.stop()

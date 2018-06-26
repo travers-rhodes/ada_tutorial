@@ -21,7 +21,7 @@ class AdaJacobianControl():
     # what is the fraction of the max speed we allow motors to go
     self.velocity_fraction = 1
     # how far can the end-effector move on each step
-    self.transStepSize = 0.01
+    self.transStepSize = 0.05
     self.angleStepSize = 0.1
     self.transEpsilon = 0.005
     # this one's a weird number, but it's a measure of how far off the rotation can get before we try to correct

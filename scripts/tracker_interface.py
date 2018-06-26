@@ -12,7 +12,7 @@ import rospkg
 
 from ada_tutorial.srv import TrackPose
 from std_msgs.msg import Header
-from geometry_msgs.msg import Pose, Point, Quaternion 
+from geometry_msgs.msg import Pose, Point, PointStamped, Quaternion 
 
 
 class CameraCalibration:
@@ -82,7 +82,7 @@ class TrackerInterface:
 
   def start_updating_target_to_point(self, mouth_point_topic, robot_coord_offset=[0,0,0]):
     self._stop_updating_target() 
-    self.mouth_target_listener = rospy.Subscriber(mouth_point_topic, Point, self._update_target_camera_frame, (robot_coord_offset))
+    self.mouth_target_listener = rospy.Subscriber(mouth_point_topic, PointStamped, self._update_target_camera_frame, (robot_coord_offset))
   
   def start_tracking_fixed_target(self, robot_coord_point):
     self._stop_updating_target() 
@@ -112,7 +112,7 @@ class TrackerInterface:
   # compute and move toward the target mouth location
   # only move for at most timeoutSecs,   
   def _update_target_camera_frame(self, mouth_pos, robot_coord_offset = [0,0,0]):
-    endLoc = self._convert_camera_to_robot_frame(mouth_pos) + np.array(robot_coord_offset)
+    endLoc = self._convert_camera_to_robot_frame(mouth_pos.point) + np.array(robot_coord_offset)
     self._update_target(target=Pose(Point(endLoc[0], endLoc[1], endLoc[2]), self.defaultQuat))
   
   # move toward the target spoon pose
